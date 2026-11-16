@@ -19,6 +19,12 @@ func doc(d bson.D) bson.Raw {
 	return b
 }
 
+func badBool() bson.Raw {
+	b := doc(bson.D{{Key: "is_valid", Value: true}})
+	b[len(b)-2] = 0x02
+	return b
+}
+
 func TestConvert(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -60,6 +66,44 @@ func TestConvert(t *testing.T) {
 			name:    "truncated bytes",
 			raw:     doc(bson.D{{Key: "name", Value: "Alice"}})[:15],
 			wantErr: "name",
+		},
+		{
+			name: "simple bool",
+			raw:  doc(bson.D{{Key: "is_valid", Value: true}}),
+			want: &testpb.Hello{IsValid: true},
+		},
+		{
+			name: "simple bool - false",
+			raw:  doc(bson.D{{Key: "is_valid", Value: false}}),
+			want: &testpb.Hello{IsValid: false},
+		},
+		{
+			name: "two fields",
+			raw: doc(bson.D{
+				{Key: "name", Value: "Alice"},
+				{Key: "is_valid", Value: true},
+			}),
+			want: &testpb.Hello{Name: "Alice", IsValid: true},
+		},
+		{
+			name:    "bool - wrong type",
+			raw:     doc(bson.D{{Key: "is_valid", Value: "yes"}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "bool into string field",
+			raw:     doc(bson.D{{Key: "name", Value: true}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "bool invalid byte",
+			raw:     badBool(),
+			wantErr: "invalid bool",
+		},
+		{
+			name:    "bool truncated",
+			raw:     doc(bson.D{{Key: "is_valid", Value: true}})[:14],
+			wantErr: "is_valid",
 		},
 	}
 

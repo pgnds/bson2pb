@@ -4,4 +4,5 @@ option go_package = "github.com/pgnds/bson2pb/testpb";
 
 message Hello {
   string name = 1;
+  bool is_valid = 2;
 }

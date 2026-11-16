@@ -24,6 +24,7 @@ const (
 type Hello struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	IsValid       bool                   `protobuf:"varint,2,opt,name=is_valid,json=isValid,proto3" json:"is_valid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -65,13 +66,21 @@ func (x *Hello) GetName() string {
 	return ""
 }
 
+func (x *Hello) GetIsValid() bool {
+	if x != nil {
+		return x.IsValid
+	}
+	return false
+}
+
 var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\x1b\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"6\n" +
 	"\x05Hello\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04nameB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
+	"\bis_valid\x18\x02 \x01(\bR\aisValidB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once
