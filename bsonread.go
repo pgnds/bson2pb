@@ -12,6 +12,7 @@ var (
 	errUnsupportedType = errors.New("unsupported type")
 	errInvalidString   = errors.New("invalid string")
 	errInvalidBool     = errors.New("invalid bool")
+	errInvalidInt32    = errors.New("invalid int32")
 )
 
 // readDocHeader reads the length prefix of a BSON document
@@ -126,4 +127,12 @@ func readBool(val []byte) (bool, error) {
 		return false, errInvalidBool
 	}
 	return val[0] == 1, nil
+}
+
+func readInt32(val []byte) (int32, error) {
+	if len(val) != 4 {
+		return 0, errInvalidInt32
+	}
+
+	return int32(binary.LittleEndian.Uint32(val)), nil
 }

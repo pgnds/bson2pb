@@ -2,7 +2,8 @@ syntax = "proto3";
 package testpb;
 option go_package = "github.com/pgnds/bson2pb/testpb";
 
-message Hello {
+message EverythingEverywhereAllAtOnce {
   string name = 1;
   bool is_valid = 2;
+  int32 age = 3;
 }

@@ -87,6 +87,15 @@ func decodeValue(fd protoreflect.FieldDescriptor, typ byte, val []byte) (protore
 			return protoreflect.Value{}, err
 		}
 		return protoreflect.ValueOfBool(b), nil
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		if typ != 0x10 {
+			return protoreflect.Value{}, fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
+		}
+		i, err := readInt32(val)
+		if err != nil {
+			return protoreflect.Value{}, err
+		}
+		return protoreflect.ValueOfInt32(i), nil
 	default:
 		return protoreflect.Value{}, fmt.Errorf("unsupported field kind %s", fd.Kind())
 	}

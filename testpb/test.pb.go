@@ -21,28 +21,29 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Hello struct {
+type EverythingEverywhereAllAtOnce struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	IsValid       bool                   `protobuf:"varint,2,opt,name=is_valid,json=isValid,proto3" json:"is_valid,omitempty"`
+	Age           int32                  `protobuf:"varint,3,opt,name=age,proto3" json:"age,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Hello) Reset() {
-	*x = Hello{}
+func (x *EverythingEverywhereAllAtOnce) Reset() {
+	*x = EverythingEverywhereAllAtOnce{}
 	mi := &file_testpb_test_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Hello) String() string {
+func (x *EverythingEverywhereAllAtOnce) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Hello) ProtoMessage() {}
+func (*EverythingEverywhereAllAtOnce) ProtoMessage() {}
 
-func (x *Hello) ProtoReflect() protoreflect.Message {
+func (x *EverythingEverywhereAllAtOnce) ProtoReflect() protoreflect.Message {
 	mi := &file_testpb_test_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -54,33 +55,41 @@ func (x *Hello) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Hello.ProtoReflect.Descriptor instead.
-func (*Hello) Descriptor() ([]byte, []int) {
+// Deprecated: Use EverythingEverywhereAllAtOnce.ProtoReflect.Descriptor instead.
+func (*EverythingEverywhereAllAtOnce) Descriptor() ([]byte, []int) {
 	return file_testpb_test_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Hello) GetName() string {
+func (x *EverythingEverywhereAllAtOnce) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *Hello) GetIsValid() bool {
+func (x *EverythingEverywhereAllAtOnce) GetIsValid() bool {
 	if x != nil {
 		return x.IsValid
 	}
 	return false
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetAge() int32 {
+	if x != nil {
+		return x.Age
+	}
+	return 0
+}
+
 var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"6\n" +
-	"\x05Hello\x12\x12\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"`\n" +
+	"\x1dEverythingEverywhereAllAtOnce\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
-	"\bis_valid\x18\x02 \x01(\bR\aisValidB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	"\bis_valid\x18\x02 \x01(\bR\aisValid\x12\x10\n" +
+	"\x03age\x18\x03 \x01(\x05R\x03ageB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once
@@ -96,7 +105,7 @@ func file_testpb_test_proto_rawDescGZIP() []byte {
 
 var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_testpb_test_proto_goTypes = []any{
-	(*Hello)(nil), // 0: testpb.Hello
+	(*EverythingEverywhereAllAtOnce)(nil), // 0: testpb.EverythingEverywhereAllAtOnce
 }
 var file_testpb_test_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
