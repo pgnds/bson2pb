@@ -3,7 +3,13 @@ package testpb;
 option go_package = "github.com/pgnds/bson2pb/testpb";
 
 message EverythingEverywhereAllAtOnce {
-  string name = 1;
-  bool is_valid = 2;
-  int32 age = 3;
+  string alter_ego         = 1;
+  bool be_kind             = 2;
+  int32 hot_dog_fingers    = 3;
+  sint32 tax_refund        = 4;
+  sfixed32 google_eyes     = 5;
+  int64 universes          = 6;
+  sfixed64 everthing_bagel = 7;
+  double improbability     = 9;
+  float raccacoonie_rating = 10;
 }

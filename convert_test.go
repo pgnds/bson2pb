@@ -21,7 +21,7 @@ func doc(d bson.D) bson.Raw {
 }
 
 func badBool() bson.Raw {
-	b := doc(bson.D{{Key: "is_valid", Value: true}})
+	b := doc(bson.D{{Key: "be_kind", Value: true}})
 	b[len(b)-2] = 0x02
 	return b
 }
@@ -39,61 +39,66 @@ func TestConvert(t *testing.T) {
 			want: &testpb.EverythingEverywhereAllAtOnce{},
 		},
 		{
-			name: "simple name",
-			raw:  doc(bson.D{{Key: "name", Value: "Alice"}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Name: "Alice"},
+			name: "simple string",
+			raw:  doc(bson.D{{Key: "alter_ego", Value: "Alice"}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{AlterEgo: "Alice"},
 		},
 		{
 			name: "unknown key skipped",
-			raw:  doc(bson.D{{Key: "name", Value: "Alice"}, {Key: "extra", Value: 1}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Name: "Alice"},
+			raw:  doc(bson.D{{Key: "alter_ego", Value: "Alice"}, {Key: "extra", Value: 1}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{AlterEgo: "Alice"},
 		},
 		{
 			name: "empty string",
-			raw:  doc(bson.D{{Key: "name", Value: ""}}),
+			raw:  doc(bson.D{{Key: "alter_ego", Value: ""}}),
 			want: &testpb.EverythingEverywhereAllAtOnce{},
 		},
 		{
 			name: "wrong case",
-			raw:  doc(bson.D{{Key: "Name", Value: "Alice"}}),
+			raw:  doc(bson.D{{Key: "Alter_Ego", Value: "Alice"}}),
 			want: &testpb.EverythingEverywhereAllAtOnce{},
 		},
 		{
 			name:    "wrong type",
-			raw:     doc(bson.D{{Key: "name", Value: 42}}),
+			raw:     doc(bson.D{{Key: "alter_ego", Value: 42}}),
 			wantErr: "malformed",
 		},
 		{
 			name:    "truncated bytes",
-			raw:     doc(bson.D{{Key: "name", Value: "Alice"}})[:15],
-			wantErr: "name",
+			raw:     doc(bson.D{{Key: "alter_ego", Value: "Alice"}})[:20],
+			wantErr: "alter_ego",
+		},
+		{
+			name:    "invalid utf8",
+			raw:     doc(bson.D{{Key: "alter_ego", Value: "Al\xffce"}}),
+			wantErr: "invalid utf8",
 		},
 		{
 			name: "simple bool",
-			raw:  doc(bson.D{{Key: "is_valid", Value: true}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{IsValid: true},
+			raw:  doc(bson.D{{Key: "be_kind", Value: true}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{BeKind: true},
 		},
 		{
 			name: "simple bool - false",
-			raw:  doc(bson.D{{Key: "is_valid", Value: false}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{IsValid: false},
+			raw:  doc(bson.D{{Key: "be_kind", Value: false}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{BeKind: false},
 		},
 		{
 			name: "two fields",
 			raw: doc(bson.D{
-				{Key: "name", Value: "Alice"},
-				{Key: "is_valid", Value: true},
+				{Key: "alter_ego", Value: "Alice"},
+				{Key: "be_kind", Value: true},
 			}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Name: "Alice", IsValid: true},
+			want: &testpb.EverythingEverywhereAllAtOnce{AlterEgo: "Alice", BeKind: true},
 		},
 		{
 			name:    "bool - wrong type",
-			raw:     doc(bson.D{{Key: "is_valid", Value: "yes"}}),
+			raw:     doc(bson.D{{Key: "be_kind", Value: "yes"}}),
 			wantErr: "malformed",
 		},
 		{
 			name:    "bool into string field",
-			raw:     doc(bson.D{{Key: "name", Value: true}}),
+			raw:     doc(bson.D{{Key: "alter_ego", Value: true}}),
 			wantErr: "malformed",
 		},
 		{
@@ -103,47 +108,47 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			name:    "bool truncated",
-			raw:     doc(bson.D{{Key: "is_valid", Value: true}})[:14],
-			wantErr: "is_valid",
+			raw:     doc(bson.D{{Key: "be_kind", Value: true}})[:13],
+			wantErr: "be_kind",
 		},
 		{
 			name: "simple int32",
-			raw:  doc(bson.D{{Key: "age", Value: 32}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Age: 32},
+			raw:  doc(bson.D{{Key: "hot_dog_fingers", Value: 32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HotDogFingers: 32},
 		},
 		{
 			name:    "int32 - wrong type",
-			raw:     doc(bson.D{{Key: "age", Value: "32"}}),
+			raw:     doc(bson.D{{Key: "hot_dog_fingers", Value: "32"}}),
 			wantErr: "malformed",
 		},
 		{
 			name:    "int32 - wrong type 2",
-			raw:     doc(bson.D{{Key: "age", Value: int64(32)}}),
+			raw:     doc(bson.D{{Key: "hot_dog_fingers", Value: int64(32)}}),
 			wantErr: "malformed",
 		},
 		{
 			name: "int32 - zero",
-			raw:  doc(bson.D{{Key: "age", Value: 0}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Age: 0},
+			raw:  doc(bson.D{{Key: "hot_dog_fingers", Value: 0}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HotDogFingers: 0},
 		},
 		{
 			name: "int32 - negative",
-			raw:  doc(bson.D{{Key: "age", Value: -1}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Age: -1},
+			raw:  doc(bson.D{{Key: "hot_dog_fingers", Value: -1}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HotDogFingers: -1},
 		},
 		{
 			name: "int32 - min",
-			raw:  doc(bson.D{{Key: "age", Value: math.MinInt32}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Age: math.MinInt32},
+			raw:  doc(bson.D{{Key: "hot_dog_fingers", Value: math.MinInt32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HotDogFingers: math.MinInt32},
 		},
 		{
 			name: "int32 - max",
-			raw:  doc(bson.D{{Key: "age", Value: math.MaxInt32}}),
-			want: &testpb.EverythingEverywhereAllAtOnce{Age: math.MaxInt32},
+			raw:  doc(bson.D{{Key: "hot_dog_fingers", Value: math.MaxInt32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HotDogFingers: math.MaxInt32},
 		},
 		{
 			name:    "int32 truncated",
-			raw:     doc(bson.D{{Key: "age", Value: 123}})[:12],
+			raw:     doc(bson.D{{Key: "hot_dog_fingers", Value: 123}})[:24],
 			wantErr: "malformed value: truncated",
 		},
 	}

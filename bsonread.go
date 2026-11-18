@@ -10,7 +10,6 @@ var (
 	errTruncated          = errors.New("truncated")
 	errInvalidLength      = errors.New("invalid length")
 	errUnsupportedType    = errors.New("unsupported type")
-	errInvalidString      = errors.New("invalid string")
 	errInvalidStringBytes = errors.New("invalid string bytes")
 	errInvalidUTF8        = errors.New("invalid utf8")
 	errInvalidBool        = errors.New("invalid bool")
@@ -112,16 +111,6 @@ func readValue(typ byte, src []byte) (val []byte, rest []byte, err error) {
 	}
 
 	return src[:size], src[size:], nil
-}
-
-func readString(val []byte) (string, error) {
-	if len(val) < 5 {
-		return "", errInvalidString
-	}
-	if val[len(val)-1] != 0x00 {
-		return "", errInvalidString
-	}
-	return string(val[4 : len(val)-1]), nil
 }
 
 func readStringBytes(val []byte) ([]byte, error) {

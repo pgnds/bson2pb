@@ -22,12 +22,18 @@ const (
 )
 
 type EverythingEverywhereAllAtOnce struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	IsValid       bool                   `protobuf:"varint,2,opt,name=is_valid,json=isValid,proto3" json:"is_valid,omitempty"`
-	Age           int32                  `protobuf:"varint,3,opt,name=age,proto3" json:"age,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AlterEgo          string                 `protobuf:"bytes,1,opt,name=alter_ego,json=alterEgo,proto3" json:"alter_ego,omitempty"`
+	BeKind            bool                   `protobuf:"varint,2,opt,name=be_kind,json=beKind,proto3" json:"be_kind,omitempty"`
+	HotDogFingers     int32                  `protobuf:"varint,3,opt,name=hot_dog_fingers,json=hotDogFingers,proto3" json:"hot_dog_fingers,omitempty"`
+	TaxRefund         int32                  `protobuf:"zigzag32,4,opt,name=tax_refund,json=taxRefund,proto3" json:"tax_refund,omitempty"`
+	GoogleEyes        int32                  `protobuf:"fixed32,5,opt,name=google_eyes,json=googleEyes,proto3" json:"google_eyes,omitempty"`
+	Universes         int64                  `protobuf:"varint,6,opt,name=universes,proto3" json:"universes,omitempty"`
+	EverthingBagel    int64                  `protobuf:"fixed64,7,opt,name=everthing_bagel,json=everthingBagel,proto3" json:"everthing_bagel,omitempty"`
+	Improbability     float64                `protobuf:"fixed64,9,opt,name=improbability,proto3" json:"improbability,omitempty"`
+	RaccacoonieRating float32                `protobuf:"fixed32,10,opt,name=raccacoonie_rating,json=raccacoonieRating,proto3" json:"raccacoonie_rating,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EverythingEverywhereAllAtOnce) Reset() {
@@ -60,23 +66,65 @@ func (*EverythingEverywhereAllAtOnce) Descriptor() ([]byte, []int) {
 	return file_testpb_test_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *EverythingEverywhereAllAtOnce) GetName() string {
+func (x *EverythingEverywhereAllAtOnce) GetAlterEgo() string {
 	if x != nil {
-		return x.Name
+		return x.AlterEgo
 	}
 	return ""
 }
 
-func (x *EverythingEverywhereAllAtOnce) GetIsValid() bool {
+func (x *EverythingEverywhereAllAtOnce) GetBeKind() bool {
 	if x != nil {
-		return x.IsValid
+		return x.BeKind
 	}
 	return false
 }
 
-func (x *EverythingEverywhereAllAtOnce) GetAge() int32 {
+func (x *EverythingEverywhereAllAtOnce) GetHotDogFingers() int32 {
 	if x != nil {
-		return x.Age
+		return x.HotDogFingers
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetTaxRefund() int32 {
+	if x != nil {
+		return x.TaxRefund
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetGoogleEyes() int32 {
+	if x != nil {
+		return x.GoogleEyes
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetUniverses() int64 {
+	if x != nil {
+		return x.Universes
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetEverthingBagel() int64 {
+	if x != nil {
+		return x.EverthingBagel
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetImprobability() float64 {
+	if x != nil {
+		return x.Improbability
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetRaccacoonieRating() float32 {
+	if x != nil {
+		return x.RaccacoonieRating
 	}
 	return 0
 }
@@ -85,11 +133,20 @@ var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"`\n" +
-	"\x1dEverythingEverywhereAllAtOnce\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
-	"\bis_valid\x18\x02 \x01(\bR\aisValid\x12\x10\n" +
-	"\x03age\x18\x03 \x01(\x05R\x03ageB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	"\x11testpb/test.proto\x12\x06testpb\"\xd9\x02\n" +
+	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
+	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
+	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
+	"\x0fhot_dog_fingers\x18\x03 \x01(\x05R\rhotDogFingers\x12\x1d\n" +
+	"\n" +
+	"tax_refund\x18\x04 \x01(\x11R\ttaxRefund\x12\x1f\n" +
+	"\vgoogle_eyes\x18\x05 \x01(\x0fR\n" +
+	"googleEyes\x12\x1c\n" +
+	"\tuniverses\x18\x06 \x01(\x03R\tuniverses\x12'\n" +
+	"\x0feverthing_bagel\x18\a \x01(\x10R\x0eeverthingBagel\x12$\n" +
+	"\rimprobability\x18\t \x01(\x01R\rimprobability\x12-\n" +
+	"\x12raccacoonie_rating\x18\n" +
+	" \x01(\x02R\x11raccacoonieRatingB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once

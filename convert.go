@@ -48,7 +48,7 @@ func Convert[M any, PM interface {
 
 			err = proto.UnmarshalOptions{Merge: true}.Unmarshal(buf, msg)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("bson2pb: %w", err)
 			}
 
 			return msg, nil
@@ -80,7 +80,9 @@ func Convert[M any, PM interface {
 	}
 }
 
-// decodeValue converts one BSON value into a protoreflect.Value for field fd
+// appendValue encodes the BSON value val (of BSON type typ) as protobuf wire
+// bytes for field fd and appends them to the buffer. Zero values of fields without
+// presence are skipped. It returns the extended buffer.
 func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
 	switch fd.Kind() {
 	case protoreflect.StringKind:
