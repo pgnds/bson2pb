@@ -26,13 +26,36 @@ func badBool() bson.Raw {
 	return b
 }
 
+type convertCase struct {
+	name    string
+	raw     bson.Raw
+	want    *testpb.EverythingEverywhereAllAtOnce
+	wantErr string
+}
+
+func runConvertCases(t *testing.T, cases []convertCase) {
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := bson2pb.Convert[testpb.EverythingEverywhereAllAtOnce](c.raw)
+			if c.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+					t.Fatalf("want error containing %q, got %v", c.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if !proto.Equal(got, c.want) {
+				t.Errorf("got %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
 func TestConvert(t *testing.T) {
-	cases := []struct {
-		name    string
-		raw     bson.Raw
-		want    *testpb.EverythingEverywhereAllAtOnce
-		wantErr string
-	}{
+	cases := []convertCase{
 		{
 			name: "empty document",
 			raw:  doc(bson.D{}),
@@ -153,22 +176,92 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, err := bson2pb.Convert[testpb.EverythingEverywhereAllAtOnce](c.raw)
-			if c.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
-					t.Fatalf("want error containing %q, got %v", c.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+	runConvertCases(t, cases)
+}
 
-			if !proto.Equal(got, c.want) {
-				t.Errorf("got %v, want %v", got, c.want)
-			}
-		})
+func TestConvertInt64(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw:  doc(bson.D{{Key: "universes", Value: int64(64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Universes: 64},
+		},
+		{
+			name:    "string value",
+			raw:     doc(bson.D{{Key: "universes", Value: "64"}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "int32 value",
+			raw:     doc(bson.D{{Key: "universes", Value: int32(64)}}),
+			wantErr: "malformed",
+		},
+		{
+			name: "zero",
+			raw:  doc(bson.D{{Key: "universes", Value: int64(0)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Universes: 0},
+		},
+		{
+			name: "negative",
+			raw:  doc(bson.D{{Key: "universes", Value: int64(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Universes: -1},
+		},
+		{
+			name: "min",
+			raw:  doc(bson.D{{Key: "universes", Value: int64(math.MinInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Universes: math.MinInt64},
+		},
+		{
+			name: "max",
+			raw:  doc(bson.D{{Key: "universes", Value: int64(math.MaxInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Universes: math.MaxInt64},
+		},
+		{
+			name:    "truncated",
+			raw:     doc(bson.D{{Key: "universes", Value: int64(123)}})[:19],
+			wantErr: "malformed value: truncated",
+		},
+		{
+			name: "sint64",
+			raw:  doc(bson.D{{Key: "verse_jumps", Value: int64(64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{VerseJumps: 64},
+		},
+		{
+			name: "sint64 negative",
+			raw:  doc(bson.D{{Key: "verse_jumps", Value: int64(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{VerseJumps: -1},
+		},
+		{
+			name: "sint64 min",
+			raw:  doc(bson.D{{Key: "verse_jumps", Value: int64(math.MinInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{VerseJumps: math.MinInt64},
+		},
+		{
+			name: "sint64 max",
+			raw:  doc(bson.D{{Key: "verse_jumps", Value: int64(math.MaxInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{VerseJumps: math.MaxInt64},
+		},
+		{
+			name: "sfixed64",
+			raw:  doc(bson.D{{Key: "everything_bagel", Value: int64(64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{EverythingBagel: 64},
+		},
+		{
+			name: "sfixed64 negative",
+			raw:  doc(bson.D{{Key: "everything_bagel", Value: int64(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{EverythingBagel: -1},
+		},
+		{
+			name: "sfixed64 min",
+			raw:  doc(bson.D{{Key: "everything_bagel", Value: int64(math.MinInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{EverythingBagel: math.MinInt64},
+		},
+		{
+			name: "sfixed64 max",
+			raw:  doc(bson.D{{Key: "everything_bagel", Value: int64(math.MaxInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{EverythingBagel: math.MaxInt64},
+		},
 	}
+
+	runConvertCases(t, cases)
 }

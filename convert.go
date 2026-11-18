@@ -129,15 +129,40 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			return buffer, nil
 		}
 
-		if fd.Kind() == protoreflect.Int32Kind {
+		switch fd.Kind() {
+		case protoreflect.Int32Kind:
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
-		} else if fd.Kind() == protoreflect.Sint32Kind {
+		case protoreflect.Sint32Kind:
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(int64(i)))
-		} else {
+		default:
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed32Type)
 			buffer = protowire.AppendFixed32(buffer, uint32(i))
+		}
+		return buffer, nil
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		if typ != 0x12 {
+			return buffer, fmt.Errorf("malformed value: want int64, got BSON type 0x%02x", typ)
+		}
+		i64, err := readInt64(val)
+		if err != nil {
+			return buffer, err
+		}
+		if i64 == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+
+		switch fd.Kind() {
+		case protoreflect.Int64Kind:
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+			buffer = protowire.AppendVarint(buffer, uint64(i64))
+		case protoreflect.Sint64Kind:
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(i64))
+		default:
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
+			buffer = protowire.AppendFixed64(buffer, uint64(i64))
 		}
 		return buffer, nil
 	default:
