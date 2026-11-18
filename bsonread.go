@@ -7,12 +7,14 @@ import (
 )
 
 var (
-	errTruncated       = errors.New("truncated")
-	errInvalidLength   = errors.New("invalid length")
-	errUnsupportedType = errors.New("unsupported type")
-	errInvalidString   = errors.New("invalid string")
-	errInvalidBool     = errors.New("invalid bool")
-	errInvalidInt32    = errors.New("invalid int32")
+	errTruncated          = errors.New("truncated")
+	errInvalidLength      = errors.New("invalid length")
+	errUnsupportedType    = errors.New("unsupported type")
+	errInvalidString      = errors.New("invalid string")
+	errInvalidStringBytes = errors.New("invalid string bytes")
+	errInvalidUTF8        = errors.New("invalid utf8")
+	errInvalidBool        = errors.New("invalid bool")
+	errInvalidInt32       = errors.New("invalid int32")
 )
 
 // readDocHeader reads the length prefix of a BSON document
@@ -120,6 +122,16 @@ func readString(val []byte) (string, error) {
 		return "", errInvalidString
 	}
 	return string(val[4 : len(val)-1]), nil
+}
+
+func readStringBytes(val []byte) ([]byte, error) {
+	if len(val) < 5 {
+		return nil, errInvalidStringBytes
+	}
+	if val[len(val)-1] != 0x00 {
+		return nil, errInvalidStringBytes
+	}
+	return val[4 : len(val)-1], nil
 }
 
 func readBool(val []byte) (bool, error) {

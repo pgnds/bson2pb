@@ -150,14 +150,17 @@ func TestConvert(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := &testpb.EverythingEverywhereAllAtOnce{}
-			err := bson2pb.Convert(c.raw, got)
+			got, err := bson2pb.Convert[testpb.EverythingEverywhereAllAtOnce](c.raw)
 			if c.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
 					t.Fatalf("want error containing %q, got %v", c.wantErr, err)
 				}
 				return
 			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
 			if !proto.Equal(got, c.want) {
 				t.Errorf("got %v, want %v", got, c.want)
 			}

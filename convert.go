@@ -3,20 +3,28 @@ package bson2pb
 
 import (
 	"fmt"
+	"sync"
+	"unicode/utf8"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// Convert decodes the BSON document raw into msg.
-func Convert(raw bson.Raw, msg proto.Message) error {
+var fieldMaps sync.Map
+
+// Convert decodes raw into a new M and returns it.
+func Convert[M any, PM interface {
+	*M
+	proto.Message
+}](raw bson.Raw) (PM, error) {
+	msg := PM(new(M))
 	m := msg.ProtoReflect()
-	fields := m.Descriptor().Fields()
 
 	length, rest, err := readDocHeader(raw)
 	if err != nil {
-		return fmt.Errorf("bson2pb: malformed document: %w", err)
+		return nil, fmt.Errorf("bson2pb: malformed document: %w", err)
 	}
 
 	truncated := int(length) > len(raw)
@@ -26,77 +34,129 @@ func Convert(raw bson.Raw, msg proto.Message) error {
 
 	var typ byte
 	var key, val []byte
+	buf := make([]byte, 0, len(raw))
+	fm := fillMessageFields(m.Descriptor())
 
 	for {
 		if len(rest) == 0 || rest[0] == 0x00 {
 			if truncated {
-				return fmt.Errorf("bson2pb: malformed document: %w", errTruncated)
+				return nil, fmt.Errorf("bson2pb: malformed document: %w", errTruncated)
 			}
 			if len(rest) != 1 {
-				return fmt.Errorf("bson2pb: malformed document: %w", errInvalidLength)
+				return nil, fmt.Errorf("bson2pb: malformed document: %w", errInvalidLength)
 			}
-			return nil
+
+			err = proto.UnmarshalOptions{Merge: true}.Unmarshal(buf, msg)
+			if err != nil {
+				return nil, err
+			}
+
+			return msg, nil
 		}
 
 		typ, key, rest, err = readHeader(rest)
 		if err != nil {
-			return fmt.Errorf("bson2pb: malformed element: %w", err)
+			return nil, fmt.Errorf("bson2pb: malformed element: %w", err)
 		}
 
 		val, rest, err = readValue(typ, rest)
 		if err != nil {
-			return fmt.Errorf("bson2pb: field %q: malformed value: %w", key, err)
+			return nil, fmt.Errorf("bson2pb: field %q: malformed value: %w", key, err)
 		}
 
-		fd := fields.ByName(protoreflect.Name(key))
-		if fd == nil {
+		fd, ok := fm[string(key)]
+		if !ok {
 			continue
 		}
 
 		if fd.IsList() || fd.IsMap() {
-			return fmt.Errorf("bson2pb: field %q: repeated and map fields not supported yet", key)
+			return nil, fmt.Errorf("bson2pb: field %q: repeated and map fields not supported yet", key)
 		}
 
-		v, err := decodeValue(fd, typ, val)
+		buf, err = appendValue(buf, fd, typ, val)
 		if err != nil {
-			return fmt.Errorf("bson2pb: field %q: %w", key, err)
+			return nil, fmt.Errorf("bson2pb: field %q: %w", key, err)
 		}
-
-		m.Set(fd, v)
 	}
 }
 
 // decodeValue converts one BSON value into a protoreflect.Value for field fd
-func decodeValue(fd protoreflect.FieldDescriptor, typ byte, val []byte) (protoreflect.Value, error) {
+func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
 	switch fd.Kind() {
 	case protoreflect.StringKind:
 		if typ != 0x02 {
-			return protoreflect.Value{}, fmt.Errorf("malformed value: want string, got BSON type 0x%02x", typ)
+			return buffer, fmt.Errorf("malformed value: want string, got BSON type 0x%02x", typ)
 		}
-		s, err := readString(val)
+		s, err := readStringBytes(val)
 		if err != nil {
-			return protoreflect.Value{}, err
+			return buffer, err
 		}
-		return protoreflect.ValueOfString(s), nil
+		if len(s) == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+		if !utf8.Valid(s) {
+			return buffer, errInvalidUTF8
+		}
+
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
+		buffer = protowire.AppendBytes(buffer, s)
+		return buffer, nil
 	case protoreflect.BoolKind:
 		if typ != 0x08 {
-			return protoreflect.Value{}, fmt.Errorf("malformed value: want bool, got BSON type 0x%02x", typ)
+			return buffer, fmt.Errorf("malformed value: want bool, got BSON type 0x%02x", typ)
 		}
 		b, err := readBool(val)
 		if err != nil {
-			return protoreflect.Value{}, err
+			return buffer, err
 		}
-		return protoreflect.ValueOfBool(b), nil
+		if !b && !fd.HasPresence() {
+			return buffer, nil // proto3 doesn't write false
+		}
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+		buffer = protowire.AppendVarint(buffer, protowire.EncodeBool(b))
+		return buffer, nil
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		if typ != 0x10 {
-			return protoreflect.Value{}, fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
+			return buffer, fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
 		}
 		i, err := readInt32(val)
 		if err != nil {
-			return protoreflect.Value{}, err
+			return buffer, err
 		}
-		return protoreflect.ValueOfInt32(i), nil
+		if i == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+
+		if fd.Kind() == protoreflect.Int32Kind {
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+			buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
+		} else if fd.Kind() == protoreflect.Sint32Kind {
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(int64(i)))
+		} else {
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed32Type)
+			buffer = protowire.AppendFixed32(buffer, uint32(i))
+		}
+		return buffer, nil
 	default:
-		return protoreflect.Value{}, fmt.Errorf("unsupported field kind %s", fd.Kind())
+		return buffer, fmt.Errorf("unsupported field kind %s", fd.Kind())
 	}
+}
+
+func fillMessageFields(md protoreflect.MessageDescriptor) map[string]protoreflect.FieldDescriptor {
+	v, ok := fieldMaps.Load(md)
+	if ok {
+		return v.(map[string]protoreflect.FieldDescriptor)
+	}
+
+	fields := md.Fields()
+	fm := make(map[string]protoreflect.FieldDescriptor, fields.Len())
+
+	for i := 0; i < fields.Len(); i++ {
+		fd := fields.Get(i)
+		fm[string(fd.Name())] = fd
+	}
+
+	actual, _ := fieldMaps.LoadOrStore(md, fm)
+	return actual.(map[string]protoreflect.FieldDescriptor)
 }
