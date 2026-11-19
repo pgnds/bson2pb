@@ -3,6 +3,7 @@ package bson2pb
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"unicode/utf8"
 
@@ -179,6 +180,22 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
 			buffer = protowire.AppendFixed64(buffer, uint64(i64))
 		}
+		return buffer, nil
+	case protoreflect.DoubleKind:
+		if typ != 0x01 {
+			return buffer, fmt.Errorf("malformed value: want double, got BSON type 0x%02x", typ)
+		}
+		f, err := readDouble(val)
+		if err != nil {
+			return buffer, err
+		}
+		fbits := math.Float64bits(f)
+		if fbits == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
+		buffer = protowire.AppendFixed64(buffer, fbits)
 		return buffer, nil
 	default:
 		return buffer, fmt.Errorf("unsupported field kind %s", fd.Kind())

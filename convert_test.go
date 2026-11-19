@@ -265,3 +265,81 @@ func TestConvertInt64(t *testing.T) {
 
 	runConvertCases(t, cases)
 }
+
+func TestConvertDouble(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw:  doc(bson.D{{Key: "improbability", Value: 1.5}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: 1.5},
+		},
+		{
+			name: "negative",
+			raw:  doc(bson.D{{Key: "improbability", Value: -2.5}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: -2.5},
+		},
+		{
+			name: "zero",
+			raw:  doc(bson.D{{Key: "improbability", Value: 0.0}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: 0.0},
+		},
+		{
+			name: "max",
+			raw:  doc(bson.D{{Key: "improbability", Value: math.MaxFloat64}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: math.MaxFloat64},
+		},
+		{
+			name: "min",
+			raw:  doc(bson.D{{Key: "improbability", Value: math.SmallestNonzeroFloat64}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: math.SmallestNonzeroFloat64},
+		},
+		{
+			name: "+Inf",
+			raw:  doc(bson.D{{Key: "improbability", Value: math.Inf(1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: math.Inf(1)},
+		},
+		{
+			name: "-Inf",
+			raw:  doc(bson.D{{Key: "improbability", Value: math.Inf(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: math.Inf(-1)},
+		},
+		{
+			name: "NaN",
+			raw:  doc(bson.D{{Key: "improbability", Value: math.NaN()}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Improbability: math.NaN()},
+		},
+		{
+			name:    "string",
+			raw:     doc(bson.D{{Key: "improbability", Value: "1.5"}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "int64",
+			raw:     doc(bson.D{{Key: "improbability", Value: int64(1)}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "int32",
+			raw:     doc(bson.D{{Key: "improbability", Value: int32(1)}}),
+			wantErr: "malformed",
+		},
+		{
+			name:    "truncated",
+			raw:     doc(bson.D{{Key: "improbability", Value: 1.5}})[:23],
+			wantErr: "malformed value: truncated",
+		},
+	}
+
+	runConvertCases(t, cases)
+
+	t.Run("negative zero", func(t *testing.T) {
+		raw := doc(bson.D{{Key: "improbability", Value: math.Copysign(0, -1)}})
+		got, err := bson2pb.Convert[testpb.EverythingEverywhereAllAtOnce](raw)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if f := got.GetImprobability(); f != 0 || !math.Signbit(f) {
+			t.Errorf("got %v, want -0", f)
+		}
+	})
+}

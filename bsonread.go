@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"math"
 )
 
 var (
@@ -15,6 +16,7 @@ var (
 	errInvalidBool        = errors.New("invalid bool")
 	errInvalidInt32       = errors.New("invalid int32")
 	errInvalidInt64       = errors.New("invalid int64")
+	errInvalidDouble      = errors.New("invalid double")
 )
 
 // readDocHeader reads the length prefix of a BSON document
@@ -145,4 +147,11 @@ func readInt64(val []byte) (int64, error) {
 	}
 
 	return int64(binary.LittleEndian.Uint64(val)), nil
+}
+
+func readDouble(val []byte) (float64, error) {
+	if len(val) != 8 {
+		return 0.0, errInvalidDouble
+	}
+	return math.Float64frombits(binary.LittleEndian.Uint64(val)), nil
 }
