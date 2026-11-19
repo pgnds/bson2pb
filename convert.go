@@ -13,6 +13,9 @@ import (
 )
 
 var fieldMaps sync.Map
+var bufPool = sync.Pool{
+	New: func() any { b := make([]byte, 0, 512); return &b },
+}
 
 // Convert decodes raw into a new M and returns it.
 func Convert[M any, PM interface {
@@ -34,7 +37,16 @@ func Convert[M any, PM interface {
 
 	var typ byte
 	var key, val []byte
-	buf := make([]byte, 0, len(raw))
+
+	bp := bufPool.Get().(*[]byte)
+	buf := (*bp)[:0]
+	defer func() {
+		if cap(buf) <= 64<<10 {
+			*bp = buf[:0]
+			bufPool.Put(bp)
+		}
+	}()
+
 	fm := fillMessageFields(m.Descriptor())
 
 	for {
@@ -44,6 +56,9 @@ func Convert[M any, PM interface {
 			}
 			if len(rest) != 1 {
 				return nil, fmt.Errorf("bson2pb: malformed document: %w", errInvalidLength)
+			}
+			if len(buf) == 0 {
+				return msg, nil
 			}
 
 			err = proto.UnmarshalOptions{Merge: true}.Unmarshal(buf, msg)
