@@ -328,6 +328,61 @@ func TestConvertDouble(t *testing.T) {
 			raw:     doc(bson.D{{Key: "improbability", Value: 1.5}})[:23],
 			wantErr: "malformed value: truncated",
 		},
+		{
+			name: "float",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: 1.5}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: 1.5},
+		},
+		{
+			name: "float negative",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: -2.5}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: -2.5},
+		},
+		{
+			name: "float zero",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: 0.0}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: 0.0},
+		},
+		{
+			name: "float rounded",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: 0.1}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: 0.1},
+		},
+		{
+			name: "float max",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: math.MaxFloat32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: math.MaxFloat32},
+		},
+		{
+			name: "float min",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: math.SmallestNonzeroFloat32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: math.SmallestNonzeroFloat32},
+		},
+		{
+			name: "float +Inf",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: math.Inf(1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: float32(math.Inf(1))},
+		},
+		{
+			name: "float -Inf",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: math.Inf(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: float32(math.Inf(-1))},
+		},
+		{
+			name: "float NaN",
+			raw:  doc(bson.D{{Key: "raccacoonie_rating", Value: math.NaN()}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{RaccacoonieRating: float32(math.NaN())},
+		},
+		{
+			name:    "float overflow",
+			raw:     doc(bson.D{{Key: "raccacoonie_rating", Value: 1e39}}),
+			wantErr: "float overflow",
+		},
+		{
+			name:    "float negative overflow",
+			raw:     doc(bson.D{{Key: "raccacoonie_rating", Value: -1e39}}),
+			wantErr: "float overflow",
+		},
 	}
 
 	runConvertCases(t, cases)
@@ -339,6 +394,17 @@ func TestConvertDouble(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if f := got.GetImprobability(); f != 0 || !math.Signbit(f) {
+			t.Errorf("got %v, want -0", f)
+		}
+	})
+
+	t.Run("float negative zero", func(t *testing.T) {
+		raw := doc(bson.D{{Key: "raccacoonie_rating", Value: math.Copysign(0, -1)}})
+		got, err := bson2pb.Convert[testpb.EverythingEverywhereAllAtOnce](raw)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if f := got.GetRaccacoonieRating(); f != 0 || !math.Signbit(float64(f)) {
 			t.Errorf("got %v, want -0", f)
 		}
 	})

@@ -2,6 +2,7 @@
 package bson2pb
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -12,6 +13,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+var errFloatOverflow = errors.New("float overflow")
 
 var fieldMaps sync.Map
 var bufPool = sync.Pool{
@@ -181,7 +184,7 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			buffer = protowire.AppendFixed64(buffer, uint64(i64))
 		}
 		return buffer, nil
-	case protoreflect.DoubleKind:
+	case protoreflect.DoubleKind, protoreflect.FloatKind:
 		if typ != 0x01 {
 			return buffer, fmt.Errorf("malformed value: want double, got BSON type 0x%02x", typ)
 		}
@@ -189,13 +192,27 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
-		fbits := math.Float64bits(f)
-		if fbits == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
 
-		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
-		buffer = protowire.AppendFixed64(buffer, fbits)
+		switch fd.Kind() {
+		case protoreflect.DoubleKind:
+			fbits := math.Float64bits(f)
+			if fbits == 0 && !fd.HasPresence() {
+				return buffer, nil
+			}
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
+			buffer = protowire.AppendFixed64(buffer, fbits)
+		default:
+			f32 := float32(f)
+			if math.IsInf(float64(f32), 0) && !math.IsInf(f, 0) {
+				return buffer, errFloatOverflow
+			}
+			fbits := math.Float32bits(f32)
+			if fbits == 0 && !fd.HasPresence() {
+				return buffer, nil
+			}
+			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed32Type)
+			buffer = protowire.AppendFixed32(buffer, fbits)
+		}
 		return buffer, nil
 	default:
 		return buffer, fmt.Errorf("unsupported field kind %s", fd.Kind())
