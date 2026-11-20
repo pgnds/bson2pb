@@ -13,4 +13,8 @@ message EverythingEverywhereAllAtOnce {
   sint64 verse_jumps        = 8;
   double improbability      = 9;
   float raccacoonie_rating  = 10;
+  uint32 laundry_loads      = 11;
+  fixed32 sentient_rocks    = 12;
+  uint64 tax_receipts       = 13;
+  fixed64 alpha_verses      = 14;
 }

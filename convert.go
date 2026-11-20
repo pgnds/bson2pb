@@ -15,6 +15,7 @@ import (
 )
 
 var errFloatOverflow = errors.New("float overflow")
+var errNegativeUnsigned = errors.New("negative unsigned")
 
 var fieldMaps sync.Map
 var bufPool = sync.Pool{
@@ -136,7 +137,11 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 		buffer = protowire.AppendVarint(buffer, protowire.EncodeBool(b))
 		return buffer, nil
-	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+	case protoreflect.Int32Kind,
+		protoreflect.Sint32Kind,
+		protoreflect.Sfixed32Kind,
+		protoreflect.Uint32Kind,
+		protoreflect.Fixed32Kind:
 		if typ != 0x10 {
 			return buffer, fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
 		}
@@ -144,12 +149,15 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
+		if (fd.Kind() == protoreflect.Uint32Kind || fd.Kind() == protoreflect.Fixed32Kind) && i < 0 {
+			return buffer, errNegativeUnsigned
+		}
 		if i == 0 && !fd.HasPresence() {
 			return buffer, nil
 		}
 
 		switch fd.Kind() {
-		case protoreflect.Int32Kind:
+		case protoreflect.Int32Kind, protoreflect.Uint32Kind:
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
 		case protoreflect.Sint32Kind:
@@ -160,7 +168,11 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			buffer = protowire.AppendFixed32(buffer, uint32(i))
 		}
 		return buffer, nil
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+	case protoreflect.Int64Kind,
+		protoreflect.Sint64Kind,
+		protoreflect.Sfixed64Kind,
+		protoreflect.Uint64Kind,
+		protoreflect.Fixed64Kind:
 		if typ != 0x12 {
 			return buffer, fmt.Errorf("malformed value: want int64, got BSON type 0x%02x", typ)
 		}
@@ -168,12 +180,15 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
+		if (fd.Kind() == protoreflect.Uint64Kind || fd.Kind() == protoreflect.Fixed64Kind) && i64 < 0 {
+			return buffer, errNegativeUnsigned
+		}
 		if i64 == 0 && !fd.HasPresence() {
 			return buffer, nil
 		}
 
 		switch fd.Kind() {
-		case protoreflect.Int64Kind:
+		case protoreflect.Int64Kind, protoreflect.Uint64Kind:
 			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, uint64(i64))
 		case protoreflect.Sint64Kind:

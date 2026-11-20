@@ -174,6 +174,56 @@ func TestConvert(t *testing.T) {
 			raw:     doc(bson.D{{Key: "hot_dog_fingers", Value: 123}})[:24],
 			wantErr: "malformed value: truncated",
 		},
+		{
+			name: "uint32",
+			raw:  doc(bson.D{{Key: "laundry_loads", Value: 32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{LaundryLoads: 32},
+		},
+		{
+			name: "uint32 - zero",
+			raw:  doc(bson.D{{Key: "laundry_loads", Value: 0}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{LaundryLoads: 0},
+		},
+		{
+			name: "uint32 - max",
+			raw:  doc(bson.D{{Key: "laundry_loads", Value: math.MaxInt32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{LaundryLoads: math.MaxInt32},
+		},
+		{
+			name:    "uint32 - negative",
+			raw:     doc(bson.D{{Key: "laundry_loads", Value: -1}}),
+			wantErr: "negative unsigned",
+		},
+		{
+			name:    "uint32 - wrong type",
+			raw:     doc(bson.D{{Key: "laundry_loads", Value: int64(32)}}),
+			wantErr: "malformed",
+		},
+		{
+			name: "fixed32",
+			raw:  doc(bson.D{{Key: "sentient_rocks", Value: 32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{SentientRocks: 32},
+		},
+		{
+			name: "fixed32 - zero",
+			raw:  doc(bson.D{{Key: "sentient_rocks", Value: 0}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{SentientRocks: 0},
+		},
+		{
+			name: "fixed32 - max",
+			raw:  doc(bson.D{{Key: "sentient_rocks", Value: math.MaxInt32}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{SentientRocks: math.MaxInt32},
+		},
+		{
+			name:    "fixed32 - negative",
+			raw:     doc(bson.D{{Key: "sentient_rocks", Value: -1}}),
+			wantErr: "negative unsigned",
+		},
+		{
+			name:    "fixed32 - wrong type",
+			raw:     doc(bson.D{{Key: "sentient_rocks", Value: int64(32)}}),
+			wantErr: "malformed",
+		},
 	}
 
 	runConvertCases(t, cases)
@@ -260,6 +310,56 @@ func TestConvertInt64(t *testing.T) {
 			name: "sfixed64 max",
 			raw:  doc(bson.D{{Key: "everything_bagel", Value: int64(math.MaxInt64)}}),
 			want: &testpb.EverythingEverywhereAllAtOnce{EverythingBagel: math.MaxInt64},
+		},
+		{
+			name: "uint64",
+			raw:  doc(bson.D{{Key: "tax_receipts", Value: int64(64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{TaxReceipts: 64},
+		},
+		{
+			name: "uint64 zero",
+			raw:  doc(bson.D{{Key: "tax_receipts", Value: int64(0)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{TaxReceipts: 0},
+		},
+		{
+			name: "uint64 max",
+			raw:  doc(bson.D{{Key: "tax_receipts", Value: int64(math.MaxInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{TaxReceipts: math.MaxInt64},
+		},
+		{
+			name:    "uint64 negative",
+			raw:     doc(bson.D{{Key: "tax_receipts", Value: int64(-1)}}),
+			wantErr: "negative unsigned",
+		},
+		{
+			name:    "uint64 int32 value",
+			raw:     doc(bson.D{{Key: "tax_receipts", Value: int32(64)}}),
+			wantErr: "malformed",
+		},
+		{
+			name: "fixed64",
+			raw:  doc(bson.D{{Key: "alpha_verses", Value: int64(64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{AlphaVerses: 64},
+		},
+		{
+			name: "fixed64 zero",
+			raw:  doc(bson.D{{Key: "alpha_verses", Value: int64(0)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{AlphaVerses: 0},
+		},
+		{
+			name: "fixed64 max",
+			raw:  doc(bson.D{{Key: "alpha_verses", Value: int64(math.MaxInt64)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{AlphaVerses: math.MaxInt64},
+		},
+		{
+			name:    "fixed64 negative",
+			raw:     doc(bson.D{{Key: "alpha_verses", Value: int64(-1)}}),
+			wantErr: "negative unsigned",
+		},
+		{
+			name:    "fixed64 int32 value",
+			raw:     doc(bson.D{{Key: "alpha_verses", Value: int32(64)}}),
+			wantErr: "malformed",
 		},
 	}
 

@@ -33,6 +33,10 @@ type EverythingEverywhereAllAtOnce struct {
 	VerseJumps        int64                  `protobuf:"zigzag64,8,opt,name=verse_jumps,json=verseJumps,proto3" json:"verse_jumps,omitempty"`
 	Improbability     float64                `protobuf:"fixed64,9,opt,name=improbability,proto3" json:"improbability,omitempty"`
 	RaccacoonieRating float32                `protobuf:"fixed32,10,opt,name=raccacoonie_rating,json=raccacoonieRating,proto3" json:"raccacoonie_rating,omitempty"`
+	LaundryLoads      uint32                 `protobuf:"varint,11,opt,name=laundry_loads,json=laundryLoads,proto3" json:"laundry_loads,omitempty"`
+	SentientRocks     uint32                 `protobuf:"fixed32,12,opt,name=sentient_rocks,json=sentientRocks,proto3" json:"sentient_rocks,omitempty"`
+	TaxReceipts       uint64                 `protobuf:"varint,13,opt,name=tax_receipts,json=taxReceipts,proto3" json:"tax_receipts,omitempty"`
+	AlphaVerses       uint64                 `protobuf:"fixed64,14,opt,name=alpha_verses,json=alphaVerses,proto3" json:"alpha_verses,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -137,11 +141,39 @@ func (x *EverythingEverywhereAllAtOnce) GetRaccacoonieRating() float32 {
 	return 0
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetLaundryLoads() uint32 {
+	if x != nil {
+		return x.LaundryLoads
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetSentientRocks() uint32 {
+	if x != nil {
+		return x.SentientRocks
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetTaxReceipts() uint64 {
+	if x != nil {
+		return x.TaxReceipts
+	}
+	return 0
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetAlphaVerses() uint64 {
+	if x != nil {
+		return x.AlphaVerses
+	}
+	return 0
+}
+
 var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\xfc\x02\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\x8e\x04\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -156,7 +188,11 @@ const file_testpb_test_proto_rawDesc = "" +
 	"verseJumps\x12$\n" +
 	"\rimprobability\x18\t \x01(\x01R\rimprobability\x12-\n" +
 	"\x12raccacoonie_rating\x18\n" +
-	" \x01(\x02R\x11raccacoonieRatingB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	" \x01(\x02R\x11raccacoonieRating\x12#\n" +
+	"\rlaundry_loads\x18\v \x01(\rR\flaundryLoads\x12%\n" +
+	"\x0esentient_rocks\x18\f \x01(\aR\rsentientRocks\x12!\n" +
+	"\ftax_receipts\x18\r \x01(\x04R\vtaxReceipts\x12!\n" +
+	"\falpha_verses\x18\x0e \x01(\x06R\valphaVersesB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once
