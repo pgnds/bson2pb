@@ -17,4 +17,10 @@ message EverythingEverywhereAllAtOnce {
   fixed32 sentient_rocks    = 12;
   uint64 tax_receipts       = 13;
   fixed64 alpha_verses      = 14;
+  Verse home_verse          = 15;
+}
+
+message Verse {
+  string name      = 1;
+  int32 jump_count = 2;
 }

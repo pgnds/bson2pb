@@ -509,3 +509,42 @@ func TestConvertDouble(t *testing.T) {
 		}
 	})
 }
+
+func TestConvertNested(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw: doc(bson.D{{
+				Key: "home_verse", Value: bson.D{
+					{Key: "name", Value: "Rock Verse"},
+					{Key: "jump_count", Value: 3},
+				}},
+			}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				HomeVerse: &testpb.Verse{Name: "Rock Verse", JumpCount: 3},
+			},
+		},
+		{
+			name: "empty",
+			raw:  doc(bson.D{{Key: "home_verse", Value: bson.D{}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HomeVerse: &testpb.Verse{}},
+		},
+		{
+			name:    "wrong type",
+			raw:     doc(bson.D{{Key: "home_verse", Value: "Rock Verse"}}),
+			wantErr: "want document",
+		},
+		{
+			name: "wrong type in sub-document",
+			raw: doc(bson.D{{
+				Key: "home_verse", Value: bson.D{
+					{Key: "name", Value: "Rock Verse"},
+					{Key: "jump_count", Value: "3"},
+				}},
+			}),
+			wantErr: `field "home_verse": field "jump_count"`,
+		},
+	}
+
+	runConvertCases(t, cases)
+}

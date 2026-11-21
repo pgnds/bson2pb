@@ -37,6 +37,7 @@ type EverythingEverywhereAllAtOnce struct {
 	SentientRocks     uint32                 `protobuf:"fixed32,12,opt,name=sentient_rocks,json=sentientRocks,proto3" json:"sentient_rocks,omitempty"`
 	TaxReceipts       uint64                 `protobuf:"varint,13,opt,name=tax_receipts,json=taxReceipts,proto3" json:"tax_receipts,omitempty"`
 	AlphaVerses       uint64                 `protobuf:"fixed64,14,opt,name=alpha_verses,json=alphaVerses,proto3" json:"alpha_verses,omitempty"`
+	HomeVerse         *Verse                 `protobuf:"bytes,15,opt,name=home_verse,json=homeVerse,proto3" json:"home_verse,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -169,11 +170,70 @@ func (x *EverythingEverywhereAllAtOnce) GetAlphaVerses() uint64 {
 	return 0
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetHomeVerse() *Verse {
+	if x != nil {
+		return x.HomeVerse
+	}
+	return nil
+}
+
+type Verse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	JumpCount     int32                  `protobuf:"varint,2,opt,name=jump_count,json=jumpCount,proto3" json:"jump_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Verse) Reset() {
+	*x = Verse{}
+	mi := &file_testpb_test_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Verse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Verse) ProtoMessage() {}
+
+func (x *Verse) ProtoReflect() protoreflect.Message {
+	mi := &file_testpb_test_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Verse.ProtoReflect.Descriptor instead.
+func (*Verse) Descriptor() ([]byte, []int) {
+	return file_testpb_test_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Verse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Verse) GetJumpCount() int32 {
+	if x != nil {
+		return x.JumpCount
+	}
+	return 0
+}
+
 var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\x8e\x04\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\xbc\x04\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -192,7 +252,13 @@ const file_testpb_test_proto_rawDesc = "" +
 	"\rlaundry_loads\x18\v \x01(\rR\flaundryLoads\x12%\n" +
 	"\x0esentient_rocks\x18\f \x01(\aR\rsentientRocks\x12!\n" +
 	"\ftax_receipts\x18\r \x01(\x04R\vtaxReceipts\x12!\n" +
-	"\falpha_verses\x18\x0e \x01(\x06R\valphaVersesB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	"\falpha_verses\x18\x0e \x01(\x06R\valphaVerses\x12,\n" +
+	"\n" +
+	"home_verse\x18\x0f \x01(\v2\r.testpb.VerseR\thomeVerse\":\n" +
+	"\x05Verse\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"jump_count\x18\x02 \x01(\x05R\tjumpCountB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once
@@ -206,16 +272,18 @@ func file_testpb_test_proto_rawDescGZIP() []byte {
 	return file_testpb_test_proto_rawDescData
 }
 
-var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_testpb_test_proto_goTypes = []any{
 	(*EverythingEverywhereAllAtOnce)(nil), // 0: testpb.EverythingEverywhereAllAtOnce
+	(*Verse)(nil),                         // 1: testpb.Verse
 }
 var file_testpb_test_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_testpb_test_proto_init() }
@@ -229,7 +297,7 @@ func file_testpb_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_testpb_test_proto_rawDesc), len(file_testpb_test_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
