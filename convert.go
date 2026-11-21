@@ -40,9 +40,6 @@ func Convert[M any, PM interface {
 		rest = raw[4:length]
 	}
 
-	var typ byte
-	var key, val []byte
-
 	bp := bufPool.Get().(*[]byte)
 	buf := (*bp)[:0]
 	defer func() {
@@ -52,36 +49,52 @@ func Convert[M any, PM interface {
 		}
 	}()
 
-	fm := fillMessageFields(m.Descriptor())
+	buf, err = appendDocument(buf, m.Descriptor(), rest)
+	if err != nil {
+		return nil, err
+	}
+	if truncated {
+		return nil, fmt.Errorf("bson2pb: malformed document: %w", errTruncated)
+	}
+	if len(buf) == 0 {
+		return msg, nil
+	}
+
+	err = proto.UnmarshalOptions{Merge: true}.Unmarshal(buf, msg)
+	if err != nil {
+		return nil, fmt.Errorf("bson2pb: %w", err)
+	}
+
+	return msg, nil
+}
+
+func appendDocument(buf []byte, md protoreflect.MessageDescriptor, rest []byte) ([]byte, error) {
+	var typ byte
+	var err error
+	var key, val []byte
+
+	fm := fillMessageFields(md)
 
 	for {
-		if len(rest) == 0 || rest[0] == 0x00 {
-			if truncated {
-				return nil, fmt.Errorf("bson2pb: malformed document: %w", errTruncated)
-			}
+		if len(rest) == 0 {
+			return buf, fmt.Errorf("bson2pb: malformed document: %w", errTruncated)
+		}
+		if rest[0] == 0x00 {
 			if len(rest) != 1 {
-				return nil, fmt.Errorf("bson2pb: malformed document: %w", errInvalidLength)
-			}
-			if len(buf) == 0 {
-				return msg, nil
+				return buf, fmt.Errorf("bson2pb: malformed document: %w", errInvalidLength)
 			}
 
-			err = proto.UnmarshalOptions{Merge: true}.Unmarshal(buf, msg)
-			if err != nil {
-				return nil, fmt.Errorf("bson2pb: %w", err)
-			}
-
-			return msg, nil
+			return buf, nil
 		}
 
 		typ, key, rest, err = readHeader(rest)
 		if err != nil {
-			return nil, fmt.Errorf("bson2pb: malformed element: %w", err)
+			return buf, fmt.Errorf("bson2pb: malformed element: %w", err)
 		}
 
 		val, rest, err = readValue(typ, rest)
 		if err != nil {
-			return nil, fmt.Errorf("bson2pb: field %q: malformed value: %w", key, err)
+			return buf, fmt.Errorf("bson2pb: field %q: malformed value: %w", key, err)
 		}
 
 		fd, ok := fm[string(key)]
@@ -90,12 +103,12 @@ func Convert[M any, PM interface {
 		}
 
 		if fd.IsList() || fd.IsMap() {
-			return nil, fmt.Errorf("bson2pb: field %q: repeated and map fields not supported yet", key)
+			return buf, fmt.Errorf("bson2pb: field %q: repeated and map fields not supported yet", key)
 		}
 
 		buf, err = appendValue(buf, fd, typ, val)
 		if err != nil {
-			return nil, fmt.Errorf("bson2pb: field %q: %w", key, err)
+			return buf, fmt.Errorf("bson2pb: field %q: %w", key, err)
 		}
 	}
 }
