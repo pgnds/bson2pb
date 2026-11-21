@@ -38,6 +38,7 @@ type EverythingEverywhereAllAtOnce struct {
 	TaxReceipts       uint64                 `protobuf:"varint,13,opt,name=tax_receipts,json=taxReceipts,proto3" json:"tax_receipts,omitempty"`
 	AlphaVerses       uint64                 `protobuf:"fixed64,14,opt,name=alpha_verses,json=alphaVerses,proto3" json:"alpha_verses,omitempty"`
 	HomeVerse         *Verse                 `protobuf:"bytes,15,opt,name=home_verse,json=homeVerse,proto3" json:"home_verse,omitempty"`
+	GooglyEyePixels   []byte                 `protobuf:"bytes,16,opt,name=googly_eye_pixels,json=googlyEyePixels,proto3" json:"googly_eye_pixels,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -177,6 +178,13 @@ func (x *EverythingEverywhereAllAtOnce) GetHomeVerse() *Verse {
 	return nil
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetGooglyEyePixels() []byte {
+	if x != nil {
+		return x.GooglyEyePixels
+	}
+	return nil
+}
+
 type Verse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -233,7 +241,7 @@ var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\xbc\x04\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\xe8\x04\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -254,7 +262,8 @@ const file_testpb_test_proto_rawDesc = "" +
 	"\ftax_receipts\x18\r \x01(\x04R\vtaxReceipts\x12!\n" +
 	"\falpha_verses\x18\x0e \x01(\x06R\valphaVerses\x12,\n" +
 	"\n" +
-	"home_verse\x18\x0f \x01(\v2\r.testpb.VerseR\thomeVerse\":\n" +
+	"home_verse\x18\x0f \x01(\v2\r.testpb.VerseR\thomeVerse\x12*\n" +
+	"\x11googly_eye_pixels\x18\x10 \x01(\fR\x0fgooglyEyePixels\":\n" +
 	"\x05Verse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +

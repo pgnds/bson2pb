@@ -26,6 +26,12 @@ func badBool() bson.Raw {
 	return b
 }
 
+func badOldBinary() bson.Raw {
+	b := doc(bson.D{{Key: "googly_eye_pixels", Value: bson.Binary{Subtype: 0x02, Data: []byte("abc")}}})
+	b[len(b)-8] = 0x09
+	return b
+}
+
 type convertCase struct {
 	name    string
 	raw     bson.Raw
@@ -543,6 +549,50 @@ func TestConvertNested(t *testing.T) {
 				}},
 			}),
 			wantErr: `field "home_verse": field "jump_count"`,
+		},
+	}
+
+	runConvertCases(t, cases)
+}
+
+func TestConvertBytes(t *testing.T) {
+	uuid := []byte{0x9b, 0x2c, 0x3e, 0x41, 0x7a, 0x55, 0x4c, 0x1d, 0x8f, 0x02, 0x6e, 0xb3, 0x90, 0x11, 0xc4, 0x5a}
+
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw:  doc(bson.D{{Key: "googly_eye_pixels", Value: []byte("abc")}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{GooglyEyePixels: []byte("abc")},
+		},
+		{
+			name: "empty",
+			raw:  doc(bson.D{{Key: "googly_eye_pixels", Value: []byte{}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{GooglyEyePixels: []byte{}},
+		},
+		{
+			name: "non-utf8",
+			raw:  doc(bson.D{{Key: "googly_eye_pixels", Value: []byte("\xff\xfe")}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{GooglyEyePixels: []byte("\xff\xfe")},
+		},
+		{
+			name: "uuid-subtype",
+			raw:  doc(bson.D{{Key: "googly_eye_pixels", Value: bson.Binary{Subtype: 0x04, Data: uuid}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{GooglyEyePixels: uuid},
+		},
+		{
+			name: "old-binary",
+			raw:  doc(bson.D{{Key: "googly_eye_pixels", Value: bson.Binary{Subtype: 0x02, Data: uuid}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{GooglyEyePixels: uuid},
+		},
+		{
+			name:    "wrong type",
+			raw:     doc(bson.D{{Key: "googly_eye_pixels", Value: "alice"}}),
+			wantErr: "want binary",
+		},
+		{
+			name:    "corrupt old binary",
+			raw:     badOldBinary(),
+			wantErr: "invalid binary",
 		},
 	}
 

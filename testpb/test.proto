@@ -18,6 +18,7 @@ message EverythingEverywhereAllAtOnce {
   uint64 tax_receipts       = 13;
   fixed64 alpha_verses      = 14;
   Verse home_verse          = 15;
+  bytes googly_eye_pixels   = 16;
 }
 
 message Verse {

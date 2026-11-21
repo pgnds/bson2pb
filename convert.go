@@ -268,6 +268,20 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			buffer = protowire.AppendFixed32(buffer, fbits)
 		}
 		return buffer, nil
+	case protoreflect.BytesKind:
+		if typ != 0x05 {
+			return buffer, fmt.Errorf("malformed value: want binary, got BSON type 0x%02x", typ)
+		}
+		b, err := readBinary(val)
+		if err != nil {
+			return buffer, err
+		}
+		if len(b) == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
+		buffer = protowire.AppendBytes(buffer, b)
+		return buffer, nil
 	default:
 		return buffer, fmt.Errorf("unsupported field kind %s", fd.Kind())
 	}

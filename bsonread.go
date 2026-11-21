@@ -17,6 +17,7 @@ var (
 	errInvalidInt32       = errors.New("invalid int32")
 	errInvalidInt64       = errors.New("invalid int64")
 	errInvalidDouble      = errors.New("invalid double")
+	errInvalidBinary      = errors.New("invalid binary")
 )
 
 // readDocHeader reads the length prefix of a BSON document
@@ -154,4 +155,29 @@ func readDouble(val []byte) (float64, error) {
 		return 0.0, errInvalidDouble
 	}
 	return math.Float64frombits(binary.LittleEndian.Uint64(val)), nil
+}
+
+// readBinary returns the data of a BSON binary value, unwrapping the deprecated 0x02 subtype.
+func readBinary(val []byte) ([]byte, error) {
+	if len(val) < 5 {
+		return nil, errInvalidBinary
+	}
+	n := int32(binary.LittleEndian.Uint32(val[:4]))
+	if n != int32(len(val)-5) {
+		return nil, errInvalidBinary
+	}
+
+	// subtype 0x02 ("old binary") repeats the length inside the data
+	if val[4] == 0x02 {
+		if len(val) < 9 {
+			return nil, errInvalidBinary
+		}
+		oldBinaryN := int32(binary.LittleEndian.Uint32(val[5:9]))
+		if oldBinaryN != int32(len(val)-9) {
+			return nil, errInvalidBinary
+		}
+		return val[9:], nil
+	}
+
+	return val[5:], nil
 }
