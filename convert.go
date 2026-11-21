@@ -282,6 +282,36 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
 		buffer = protowire.AppendBytes(buffer, b)
 		return buffer, nil
+	case protoreflect.EnumKind:
+		var i int32
+
+		switch typ {
+		case 0x10:
+			var err error
+			i, err = readInt32(val)
+			if err != nil {
+				return buffer, err
+			}
+		case 0x02:
+			s, err := readStringBytes(val)
+			if err != nil {
+				return buffer, err
+			}
+			e := fd.Enum().Values().ByName(protoreflect.Name(s))
+			if e == nil {
+				return buffer, fmt.Errorf("unknown enum name: %q", s)
+			}
+			i = int32(e.Number())
+		default:
+			return buffer, fmt.Errorf("malformed value: want int32 or string, got BSON type 0x%02x", typ)
+		}
+
+		if i == 0 && !fd.HasPresence() {
+			return buffer, nil
+		}
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
+		buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
+		return buffer, nil
 	default:
 		return buffer, fmt.Errorf("unsupported field kind %s", fd.Kind())
 	}

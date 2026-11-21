@@ -21,6 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type Mood int32
+
+const (
+	Mood_MOOD_UNSPECIFIED Mood = 0
+	Mood_MOOD_NIHILISTIC  Mood = 1
+	Mood_MOOD_KIND        Mood = 2
+	Mood_MOOD_BAGEL       Mood = -1
+)
+
+// Enum value maps for Mood.
+var (
+	Mood_name = map[int32]string{
+		0:  "MOOD_UNSPECIFIED",
+		1:  "MOOD_NIHILISTIC",
+		2:  "MOOD_KIND",
+		-1: "MOOD_BAGEL",
+	}
+	Mood_value = map[string]int32{
+		"MOOD_UNSPECIFIED": 0,
+		"MOOD_NIHILISTIC":  1,
+		"MOOD_KIND":        2,
+		"MOOD_BAGEL":       -1,
+	}
+)
+
+func (x Mood) Enum() *Mood {
+	p := new(Mood)
+	*p = x
+	return p
+}
+
+func (x Mood) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Mood) Descriptor() protoreflect.EnumDescriptor {
+	return file_testpb_test_proto_enumTypes[0].Descriptor()
+}
+
+func (Mood) Type() protoreflect.EnumType {
+	return &file_testpb_test_proto_enumTypes[0]
+}
+
+func (x Mood) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Mood.Descriptor instead.
+func (Mood) EnumDescriptor() ([]byte, []int) {
+	return file_testpb_test_proto_rawDescGZIP(), []int{0}
+}
+
 type EverythingEverywhereAllAtOnce struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	AlterEgo          string                 `protobuf:"bytes,1,opt,name=alter_ego,json=alterEgo,proto3" json:"alter_ego,omitempty"`
@@ -39,6 +91,7 @@ type EverythingEverywhereAllAtOnce struct {
 	AlphaVerses       uint64                 `protobuf:"fixed64,14,opt,name=alpha_verses,json=alphaVerses,proto3" json:"alpha_verses,omitempty"`
 	HomeVerse         *Verse                 `protobuf:"bytes,15,opt,name=home_verse,json=homeVerse,proto3" json:"home_verse,omitempty"`
 	GooglyEyePixels   []byte                 `protobuf:"bytes,16,opt,name=googly_eye_pixels,json=googlyEyePixels,proto3" json:"googly_eye_pixels,omitempty"`
+	Mood              Mood                   `protobuf:"varint,17,opt,name=mood,proto3,enum=testpb.Mood" json:"mood,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -185,6 +238,13 @@ func (x *EverythingEverywhereAllAtOnce) GetGooglyEyePixels() []byte {
 	return nil
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetMood() Mood {
+	if x != nil {
+		return x.Mood
+	}
+	return Mood_MOOD_UNSPECIFIED
+}
+
 type Verse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -241,7 +301,7 @@ var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\xe8\x04\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\x8a\x05\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -263,11 +323,18 @@ const file_testpb_test_proto_rawDesc = "" +
 	"\falpha_verses\x18\x0e \x01(\x06R\valphaVerses\x12,\n" +
 	"\n" +
 	"home_verse\x18\x0f \x01(\v2\r.testpb.VerseR\thomeVerse\x12*\n" +
-	"\x11googly_eye_pixels\x18\x10 \x01(\fR\x0fgooglyEyePixels\":\n" +
+	"\x11googly_eye_pixels\x18\x10 \x01(\fR\x0fgooglyEyePixels\x12 \n" +
+	"\x04mood\x18\x11 \x01(\x0e2\f.testpb.MoodR\x04mood\":\n" +
 	"\x05Verse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"jump_count\x18\x02 \x01(\x05R\tjumpCountB!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
+	"jump_count\x18\x02 \x01(\x05R\tjumpCount*Y\n" +
+	"\x04Mood\x12\x14\n" +
+	"\x10MOOD_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fMOOD_NIHILISTIC\x10\x01\x12\r\n" +
+	"\tMOOD_KIND\x10\x02\x12\x17\n" +
+	"\n" +
+	"MOOD_BAGEL\x10\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01B!Z\x1fgithub.com/pgnds/bson2pb/testpbb\x06proto3"
 
 var (
 	file_testpb_test_proto_rawDescOnce sync.Once
@@ -281,18 +348,21 @@ func file_testpb_test_proto_rawDescGZIP() []byte {
 	return file_testpb_test_proto_rawDescData
 }
 
+var file_testpb_test_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_testpb_test_proto_goTypes = []any{
-	(*EverythingEverywhereAllAtOnce)(nil), // 0: testpb.EverythingEverywhereAllAtOnce
-	(*Verse)(nil),                         // 1: testpb.Verse
+	(Mood)(0),                             // 0: testpb.Mood
+	(*EverythingEverywhereAllAtOnce)(nil), // 1: testpb.EverythingEverywhereAllAtOnce
+	(*Verse)(nil),                         // 2: testpb.Verse
 }
 var file_testpb_test_proto_depIdxs = []int32{
-	1, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
+	0, // 1: testpb.EverythingEverywhereAllAtOnce.mood:type_name -> testpb.Mood
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_testpb_test_proto_init() }
@@ -305,13 +375,14 @@ func file_testpb_test_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_testpb_test_proto_rawDesc), len(file_testpb_test_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_testpb_test_proto_goTypes,
 		DependencyIndexes: file_testpb_test_proto_depIdxs,
+		EnumInfos:         file_testpb_test_proto_enumTypes,
 		MessageInfos:      file_testpb_test_proto_msgTypes,
 	}.Build()
 	File_testpb_test_proto = out.File

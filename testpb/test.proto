@@ -19,9 +19,17 @@ message EverythingEverywhereAllAtOnce {
   fixed64 alpha_verses      = 14;
   Verse home_verse          = 15;
   bytes googly_eye_pixels   = 16;
+  Mood mood                 = 17;
 }
 
 message Verse {
   string name      = 1;
   int32 jump_count = 2;
+}
+
+enum Mood {
+  MOOD_UNSPECIFIED = 0;
+  MOOD_NIHILISTIC  = 1;
+  MOOD_KIND        = 2;
+  MOOD_BAGEL       = -1;
 }

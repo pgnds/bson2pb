@@ -598,3 +598,65 @@ func TestConvertBytes(t *testing.T) {
 
 	runConvertCases(t, cases)
 }
+
+func TestConvertEnum(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw:  doc(bson.D{{Key: "mood", Value: int32(testpb.Mood_MOOD_KIND)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Mood: testpb.Mood_MOOD_KIND},
+		},
+		{
+			name: "zero",
+			raw:  doc(bson.D{{Key: "mood", Value: int32(0)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{},
+		},
+		{
+			name: "negative",
+			raw:  doc(bson.D{{Key: "mood", Value: int32(-1)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Mood: testpb.Mood_MOOD_BAGEL},
+		},
+		{
+			name: "undeclared value",
+			raw:  doc(bson.D{{Key: "mood", Value: int32(42)}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Mood: testpb.Mood(42)},
+		},
+		{
+			name: "string value",
+			raw:  doc(bson.D{{Key: "mood", Value: "MOOD_KIND"}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Mood: testpb.Mood_MOOD_KIND},
+		},
+		{
+			name:    "int64 value",
+			raw:     doc(bson.D{{Key: "mood", Value: int64(1)}}),
+			wantErr: "malformed",
+		},
+		{
+			name: "string zero",
+			raw:  doc(bson.D{{Key: "mood", Value: "MOOD_UNSPECIFIED"}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{},
+		},
+		{
+			name: "string negative",
+			raw:  doc(bson.D{{Key: "mood", Value: "MOOD_BAGEL"}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Mood: testpb.Mood_MOOD_BAGEL},
+		},
+		{
+			name:    "unknown name",
+			raw:     doc(bson.D{{Key: "mood", Value: "MOOD_NOPE"}}),
+			wantErr: "unknown enum name",
+		},
+		{
+			name:    "wrong case",
+			raw:     doc(bson.D{{Key: "mood", Value: "mood_kind"}}),
+			wantErr: "unknown enum name",
+		},
+		{
+			name:    "empty string",
+			raw:     doc(bson.D{{Key: "mood", Value: ""}}),
+			wantErr: "unknown enum name",
+		},
+	}
+
+	runConvertCases(t, cases)
+}
