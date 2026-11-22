@@ -3,23 +3,26 @@ package testpb;
 option go_package = "github.com/pgnds/bson2pb/testpb";
 
 message EverythingEverywhereAllAtOnce {
-  string alter_ego          = 1;
-  bool be_kind              = 2;
-  int32 hot_dog_fingers     = 3;
-  sint32 tax_refund         = 4;
-  sfixed32 googly_eyes      = 5;
-  int64 universes           = 6;
-  sfixed64 everything_bagel = 7;
-  sint64 verse_jumps        = 8;
-  double improbability      = 9;
-  float raccacoonie_rating  = 10;
-  uint32 laundry_loads      = 11;
-  fixed32 sentient_rocks    = 12;
-  uint64 tax_receipts       = 13;
-  fixed64 alpha_verses      = 14;
-  Verse home_verse          = 15;
-  bytes googly_eye_pixels   = 16;
-  Mood mood                 = 17;
+  string alter_ego               = 1;
+  bool be_kind                   = 2;
+  int32 hot_dog_fingers          = 3;
+  sint32 tax_refund              = 4;
+  sfixed32 googly_eyes           = 5;
+  int64 universes                = 6;
+  sfixed64 everything_bagel      = 7;
+  sint64 verse_jumps             = 8;
+  double improbability           = 9;
+  float raccacoonie_rating       = 10;
+  uint32 laundry_loads           = 11;
+  fixed32 sentient_rocks         = 12;
+  uint64 tax_receipts            = 13;
+  fixed64 alpha_verses           = 14;
+  Verse home_verse               = 15;
+  bytes googly_eye_pixels        = 16;
+  Mood mood                      = 17;
+  repeated int32 fanny_pack_hits = 18;
+  repeated string other_lives    = 19;
+  repeated Verse multiverse      = 20;
 }
 
 message Verse {

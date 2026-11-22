@@ -92,6 +92,9 @@ type EverythingEverywhereAllAtOnce struct {
 	HomeVerse         *Verse                 `protobuf:"bytes,15,opt,name=home_verse,json=homeVerse,proto3" json:"home_verse,omitempty"`
 	GooglyEyePixels   []byte                 `protobuf:"bytes,16,opt,name=googly_eye_pixels,json=googlyEyePixels,proto3" json:"googly_eye_pixels,omitempty"`
 	Mood              Mood                   `protobuf:"varint,17,opt,name=mood,proto3,enum=testpb.Mood" json:"mood,omitempty"`
+	FannyPackHits     []int32                `protobuf:"varint,18,rep,packed,name=fanny_pack_hits,json=fannyPackHits,proto3" json:"fanny_pack_hits,omitempty"`
+	OtherLives        []string               `protobuf:"bytes,19,rep,name=other_lives,json=otherLives,proto3" json:"other_lives,omitempty"`
+	Multiverse        []*Verse               `protobuf:"bytes,20,rep,name=multiverse,proto3" json:"multiverse,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -245,6 +248,27 @@ func (x *EverythingEverywhereAllAtOnce) GetMood() Mood {
 	return Mood_MOOD_UNSPECIFIED
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetFannyPackHits() []int32 {
+	if x != nil {
+		return x.FannyPackHits
+	}
+	return nil
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetOtherLives() []string {
+	if x != nil {
+		return x.OtherLives
+	}
+	return nil
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetMultiverse() []*Verse {
+	if x != nil {
+		return x.Multiverse
+	}
+	return nil
+}
+
 type Verse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -301,7 +325,7 @@ var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\x8a\x05\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\x82\x06\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -324,7 +348,13 @@ const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
 	"home_verse\x18\x0f \x01(\v2\r.testpb.VerseR\thomeVerse\x12*\n" +
 	"\x11googly_eye_pixels\x18\x10 \x01(\fR\x0fgooglyEyePixels\x12 \n" +
-	"\x04mood\x18\x11 \x01(\x0e2\f.testpb.MoodR\x04mood\":\n" +
+	"\x04mood\x18\x11 \x01(\x0e2\f.testpb.MoodR\x04mood\x12&\n" +
+	"\x0ffanny_pack_hits\x18\x12 \x03(\x05R\rfannyPackHits\x12\x1f\n" +
+	"\vother_lives\x18\x13 \x03(\tR\n" +
+	"otherLives\x12-\n" +
+	"\n" +
+	"multiverse\x18\x14 \x03(\v2\r.testpb.VerseR\n" +
+	"multiverse\":\n" +
 	"\x05Verse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
@@ -358,11 +388,12 @@ var file_testpb_test_proto_goTypes = []any{
 var file_testpb_test_proto_depIdxs = []int32{
 	2, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
 	0, // 1: testpb.EverythingEverywhereAllAtOnce.mood:type_name -> testpb.Mood
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 2: testpb.EverythingEverywhereAllAtOnce.multiverse:type_name -> testpb.Verse
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_testpb_test_proto_init() }

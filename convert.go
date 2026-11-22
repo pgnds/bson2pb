@@ -106,11 +106,13 @@ func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byt
 			continue
 		}
 
-		if fd.IsList() || fd.IsMap() {
-			return buffer, fmt.Errorf("field %q: repeated and map fields not supported yet", key)
+		if fd.IsMap() {
+			return buffer, fmt.Errorf("field %q: map fields not supported yet", key)
 		}
 
-		if fd.Kind() == protoreflect.MessageKind {
+		if fd.IsList() {
+			buffer, err = appendList(buffer, fd, typ, val)
+		} else if fd.Kind() == protoreflect.MessageKind {
 			buffer, err = appendMessage(buffer, fd, typ, val)
 		} else {
 			buffer, err = appendValue(buffer, fd, typ, val)
@@ -139,10 +141,72 @@ func appendMessage(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val
 	return buffer, nil
 }
 
+// appendList encodes the BSON array val as a repeated field fd, one tag per element.
+func appendList(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
+	var elemTyp byte
+	var err error
+	var key, elemVal []byte
+
+	if typ != 0x04 {
+		return buffer, fmt.Errorf("malformed value: want array, got BSON type 0x%02x", typ)
+	}
+	rest := val[4:]
+
+	for {
+		if len(rest) == 0 {
+			return buffer, fmt.Errorf("malformed array: %w", errTruncated)
+		}
+		if rest[0] == 0x00 {
+			if len(rest) != 1 {
+				return buffer, fmt.Errorf("malformed array: %w", errInvalidLength)
+			}
+
+			return buffer, nil
+		}
+
+		elemTyp, key, rest, err = readHeader(rest)
+		if err != nil {
+			return buffer, fmt.Errorf("malformed element: %w", err)
+		}
+
+		elemVal, rest, err = readValue(elemTyp, rest)
+		if err != nil {
+			return buffer, fmt.Errorf("element %s: malformed value: %w", key, err)
+		}
+
+		if fd.Kind() == protoreflect.MessageKind {
+			buffer, err = appendMessage(buffer, fd, elemTyp, elemVal)
+		} else {
+			buffer = protowire.AppendTag(buffer, fd.Number(), wireType(fd.Kind()))
+			buffer, err = encodeValue(buffer, fd, elemTyp, elemVal)
+		}
+
+		if err != nil {
+			return buffer, fmt.Errorf("element %s: %w", key, err)
+		}
+	}
+}
+
 // appendValue encodes the BSON value val (of BSON type typ) as protobuf wire
 // bytes for field fd and appends them to the buffer. Zero values of fields without
 // presence are skipped. It returns the extended buffer.
 func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
+	start := len(buffer)
+	buffer = protowire.AppendTag(buffer, fd.Number(), wireType(fd.Kind()))
+	valStart := len(buffer)
+	buffer, err := encodeValue(buffer, fd, typ, val)
+	if err != nil {
+		return buffer, err
+	}
+	if !fd.HasPresence() && allZero(buffer[valStart:]) {
+		return buffer[:start], nil
+	}
+
+	return buffer, nil
+}
+
+// encodeValue appends the wire encoding of val for fd, with no tag and no zero-skip
+func encodeValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
 	switch fd.Kind() {
 	case protoreflect.StringKind:
 		if typ != 0x02 {
@@ -152,14 +216,10 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
-		if len(s) == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
 		if !utf8.Valid(s) {
 			return buffer, errInvalidUTF8
 		}
 
-		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
 		buffer = protowire.AppendBytes(buffer, s)
 		return buffer, nil
 	case protoreflect.BoolKind:
@@ -170,10 +230,6 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
-		if !b && !fd.HasPresence() {
-			return buffer, nil // proto3 doesn't write false
-		}
-		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 		buffer = protowire.AppendVarint(buffer, protowire.EncodeBool(b))
 		return buffer, nil
 	case protoreflect.Int32Kind,
@@ -191,19 +247,13 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if (fd.Kind() == protoreflect.Uint32Kind || fd.Kind() == protoreflect.Fixed32Kind) && i < 0 {
 			return buffer, errNegativeUnsigned
 		}
-		if i == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
 
 		switch fd.Kind() {
 		case protoreflect.Int32Kind, protoreflect.Uint32Kind:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
 		case protoreflect.Sint32Kind:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(int64(i)))
 		default:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed32Type)
 			buffer = protowire.AppendFixed32(buffer, uint32(i))
 		}
 		return buffer, nil
@@ -222,19 +272,13 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if (fd.Kind() == protoreflect.Uint64Kind || fd.Kind() == protoreflect.Fixed64Kind) && i64 < 0 {
 			return buffer, errNegativeUnsigned
 		}
-		if i64 == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
 
 		switch fd.Kind() {
 		case protoreflect.Int64Kind, protoreflect.Uint64Kind:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, uint64(i64))
 		case protoreflect.Sint64Kind:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(i64))
 		default:
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
 			buffer = protowire.AppendFixed64(buffer, uint64(i64))
 		}
 		return buffer, nil
@@ -250,10 +294,6 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		switch fd.Kind() {
 		case protoreflect.DoubleKind:
 			fbits := math.Float64bits(f)
-			if fbits == 0 && !fd.HasPresence() {
-				return buffer, nil
-			}
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed64Type)
 			buffer = protowire.AppendFixed64(buffer, fbits)
 		default:
 			f32 := float32(f)
@@ -261,10 +301,6 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 				return buffer, errFloatOverflow
 			}
 			fbits := math.Float32bits(f32)
-			if fbits == 0 && !fd.HasPresence() {
-				return buffer, nil
-			}
-			buffer = protowire.AppendTag(buffer, fd.Number(), protowire.Fixed32Type)
 			buffer = protowire.AppendFixed32(buffer, fbits)
 		}
 		return buffer, nil
@@ -276,10 +312,6 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 		if err != nil {
 			return buffer, err
 		}
-		if len(b) == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
-		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
 		buffer = protowire.AppendBytes(buffer, b)
 		return buffer, nil
 	case protoreflect.EnumKind:
@@ -306,10 +338,6 @@ func appendValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			return buffer, fmt.Errorf("malformed value: want int32 or string, got BSON type 0x%02x", typ)
 		}
 
-		if i == 0 && !fd.HasPresence() {
-			return buffer, nil
-		}
-		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.VarintType)
 		buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
 		return buffer, nil
 	default:
@@ -333,4 +361,41 @@ func fillMessageFields(md protoreflect.MessageDescriptor) map[string]protoreflec
 
 	actual, _ := fieldMaps.LoadOrStore(md, fm)
 	return actual.(map[string]protoreflect.FieldDescriptor)
+}
+
+func wireType(kind protoreflect.Kind) protowire.Type {
+	switch kind {
+	case protoreflect.BoolKind,
+		protoreflect.EnumKind,
+		protoreflect.Int32Kind,
+		protoreflect.Sint32Kind,
+		protoreflect.Uint32Kind,
+		protoreflect.Int64Kind,
+		protoreflect.Sint64Kind,
+		protoreflect.Uint64Kind:
+		return protowire.VarintType
+	case protoreflect.Fixed32Kind,
+		protoreflect.Sfixed32Kind,
+		protoreflect.FloatKind:
+		return protowire.Fixed32Type
+	case protoreflect.Fixed64Kind,
+		protoreflect.Sfixed64Kind,
+		protoreflect.DoubleKind:
+		return protowire.Fixed64Type
+	case protoreflect.StringKind,
+		protoreflect.BytesKind,
+		protoreflect.MessageKind:
+		return protowire.BytesType
+	default: // protoreflect.GroupKind (legacy proto2)
+		return protowire.StartGroupType
+	}
+}
+
+func allZero(b []byte) bool {
+	for _, byt := range b {
+		if byt != 0x00 {
+			return false
+		}
+	}
+	return true
 }

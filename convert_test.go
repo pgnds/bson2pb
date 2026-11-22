@@ -660,3 +660,101 @@ func TestConvertEnum(t *testing.T) {
 
 	runConvertCases(t, cases)
 }
+
+func TestConvertRepeated(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "ints",
+			raw:  doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{3, 1, 2}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{FannyPackHits: []int32{3, 1, 2}},
+		},
+		{
+			name: "ints keep zeros",
+			raw:  doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{0, 7, 0}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{FannyPackHits: []int32{0, 7, 0}},
+		},
+		{
+			name: "negative ints",
+			raw:  doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{-1, math.MinInt32}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{FannyPackHits: []int32{-1, math.MinInt32}},
+		},
+		{
+			name: "single element",
+			raw:  doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{42}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{FannyPackHits: []int32{42}},
+		},
+		{
+			name: "empty array",
+			raw:  doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{},
+		},
+		{
+			name: "strings keep empty",
+			raw:  doc(bson.D{{Key: "other_lives", Value: bson.A{"chef", "", "opera singer"}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{OtherLives: []string{"chef", "", "opera singer"}},
+		},
+		{
+			name: "messages keep empty",
+			raw: doc(bson.D{{Key: "multiverse", Value: bson.A{
+				bson.D{{Key: "name", Value: "Rock Verse"}, {Key: "jump_count", Value: 3}},
+				bson.D{},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{Multiverse: []*testpb.Verse{
+				{Name: "Rock Verse", JumpCount: 3},
+				{},
+			}},
+		},
+		{
+			name: "all three together",
+			raw: doc(bson.D{
+				{Key: "fanny_pack_hits", Value: bson.A{1, 2}},
+				{Key: "other_lives", Value: bson.A{"chef"}},
+				{Key: "multiverse", Value: bson.A{bson.D{{Key: "name", Value: "Hot Dog Verse"}}}},
+			}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				FannyPackHits: []int32{1, 2},
+				OtherLives:    []string{"chef"},
+				Multiverse:    []*testpb.Verse{{Name: "Hot Dog Verse"}},
+			},
+		},
+		{
+			name:    "not an array",
+			raw:     doc(bson.D{{Key: "fanny_pack_hits", Value: 1}}),
+			wantErr: "want array",
+		},
+		{
+			name:    "document instead of array",
+			raw:     doc(bson.D{{Key: "fanny_pack_hits", Value: bson.D{{Key: "0", Value: 1}}}}),
+			wantErr: "want array",
+		},
+		{
+			name:    "wrong element type",
+			raw:     doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{1, "2"}}}),
+			wantErr: `field "fanny_pack_hits": element 1`,
+		},
+		{
+			name:    "int64 element",
+			raw:     doc(bson.D{{Key: "fanny_pack_hits", Value: bson.A{int64(1)}}}),
+			wantErr: "want int32",
+		},
+		{
+			name:    "invalid utf8 element",
+			raw:     doc(bson.D{{Key: "other_lives", Value: bson.A{"chef", "Al\xffce"}}}),
+			wantErr: `field "other_lives": element 1: invalid utf8`,
+		},
+		{
+			name:    "non-document message element",
+			raw:     doc(bson.D{{Key: "multiverse", Value: bson.A{bson.D{}, "Rock Verse"}}}),
+			wantErr: `field "multiverse": element 1: malformed value: want document`,
+		},
+		{
+			name: "wrong type inside message element",
+			raw: doc(bson.D{{Key: "multiverse", Value: bson.A{
+				bson.D{{Key: "jump_count", Value: "3"}},
+			}}}),
+			wantErr: `field "multiverse": element 0: field "jump_count"`,
+		},
+	}
+
+	runConvertCases(t, cases)
+}
