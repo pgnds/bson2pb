@@ -2,6 +2,7 @@
 package bson2pb
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
@@ -124,21 +125,24 @@ func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byt
 }
 
 // appendMessage encodes the BSON sub-document val as a length-delimited protobuf
-// message for field fd and appends it to the buffer. Unlike scalar zero values,
-// an empty sub-document is still written, since message fields always have
-// presence. It returns the extended buffer.
+// message for field fd and appends it to the buffer. The child is written
+// straight into the buffer and its length inserted afterwards, so no separate
+// child buffer is allocated. Unlike scalar zero values, an empty sub-document is
+// still written, since message fields always have presence. It returns the extended
+// buffer.
 func appendMessage(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
 	if typ != 0x03 {
 		return buffer, fmt.Errorf("malformed value: want document, got BSON type 0x%02x", typ)
 	}
-	child, err := appendDocument(nil, fd.Message(), val[4:])
+	buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
+	valStart := len(buffer)
+
+	buffer, err := appendDocument(buffer, fd.Message(), val[4:])
 	if err != nil {
 		return buffer, err
 	}
-	buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
-	buffer = protowire.AppendBytes(buffer, child)
 
-	return buffer, nil
+	return insertLength(buffer, valStart), nil
 }
 
 // appendList encodes the BSON array val as a repeated field fd, one tag per element.
@@ -398,4 +402,20 @@ func allZero(b []byte) bool {
 		}
 	}
 	return true
+}
+
+// insertLength turns the bytes written since pos into a length-delimited value
+// in place: it shifts them right to make room for their length and writes the
+// length as a varint at pos. it returns the extended buffer.
+func insertLength(buffer []byte, pos int) []byte {
+	n := len(buffer) - pos
+	k := protowire.SizeVarint(uint64(n))
+
+	buffer = append(buffer, make([]byte, k)...) // grow by k bytes
+	copy(buffer[pos+k:], buffer[pos:pos+n])     // shift the values right by k
+
+	var length [binary.MaxVarintLen64]byte
+	copy(buffer[pos:], protowire.AppendVarint(length[:0], uint64(n)))
+
+	return buffer
 }

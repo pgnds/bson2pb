@@ -273,6 +273,7 @@ type Verse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	JumpCount     int32                  `protobuf:"varint,2,opt,name=jump_count,json=jumpCount,proto3" json:"jump_count,omitempty"`
+	NextVerse     *Verse                 `protobuf:"bytes,3,opt,name=next_verse,json=nextVerse,proto3" json:"next_verse,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -321,6 +322,13 @@ func (x *Verse) GetJumpCount() int32 {
 	return 0
 }
 
+func (x *Verse) GetNextVerse() *Verse {
+	if x != nil {
+		return x.NextVerse
+	}
+	return nil
+}
+
 var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
@@ -354,11 +362,13 @@ const file_testpb_test_proto_rawDesc = "" +
 	"otherLives\x12-\n" +
 	"\n" +
 	"multiverse\x18\x14 \x03(\v2\r.testpb.VerseR\n" +
-	"multiverse\":\n" +
+	"multiverse\"h\n" +
 	"\x05Verse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"jump_count\x18\x02 \x01(\x05R\tjumpCount*Y\n" +
+	"jump_count\x18\x02 \x01(\x05R\tjumpCount\x12,\n" +
+	"\n" +
+	"next_verse\x18\x03 \x01(\v2\r.testpb.VerseR\tnextVerse*Y\n" +
 	"\x04Mood\x12\x14\n" +
 	"\x10MOOD_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fMOOD_NIHILISTIC\x10\x01\x12\r\n" +
@@ -389,11 +399,12 @@ var file_testpb_test_proto_depIdxs = []int32{
 	2, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
 	0, // 1: testpb.EverythingEverywhereAllAtOnce.mood:type_name -> testpb.Mood
 	2, // 2: testpb.EverythingEverywhereAllAtOnce.multiverse:type_name -> testpb.Verse
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 3: testpb.Verse.next_verse:type_name -> testpb.Verse
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_testpb_test_proto_init() }

@@ -536,6 +536,55 @@ func TestConvertNested(t *testing.T) {
 			want: &testpb.EverythingEverywhereAllAtOnce{HomeVerse: &testpb.Verse{}},
 		},
 		{
+			name: "length needs 2 bytes",
+			raw: doc(bson.D{
+				{Key: "alter_ego", Value: "Evelyn"},
+				{Key: "home_verse", Value: bson.D{{Key: "name", Value: strings.Repeat("a", 200)}}},
+				{Key: "be_kind", Value: true},
+			}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				AlterEgo:  "Evelyn",
+				HomeVerse: &testpb.Verse{Name: strings.Repeat("a", 200)},
+				BeKind:    true,
+			},
+		},
+		{
+			name: "three levels",
+			raw: doc(bson.D{{Key: "home_verse", Value: bson.D{
+				{Key: "name", Value: "Rock Verse"},
+				{Key: "next_verse", Value: bson.D{
+					{Key: "name", Value: strings.Repeat("b", 200)},
+					{Key: "next_verse", Value: bson.D{{Key: "jump_count", Value: 3}}},
+					{Key: "jump_count", Value: 2},
+				}},
+				{Key: "jump_count", Value: 1},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HomeVerse: &testpb.Verse{
+				Name:      "Rock Verse",
+				JumpCount: 1,
+				NextVerse: &testpb.Verse{
+					Name:      strings.Repeat("b", 200),
+					JumpCount: 2,
+					NextVerse: &testpb.Verse{JumpCount: 3},
+				},
+			}},
+		},
+		{
+			name: "empty innermost",
+			raw: doc(bson.D{{Key: "home_verse", Value: bson.D{
+				{Key: "next_verse", Value: bson.D{{Key: "next_verse", Value: bson.D{}}}},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{HomeVerse: &testpb.Verse{
+				NextVerse: &testpb.Verse{NextVerse: &testpb.Verse{}},
+			}},
+		},
+		{
+			name:    "error two levels down",
+			raw:     doc(bson.D{{Key: "home_verse", Value: bson.D{{Key: "next_verse", Value: bson.D{{Key: "jump_count", Value: "3"}}}}}}),
+			wantErr: `field "home_verse": field "next_verse": field "jump_count"`,
+		},
+
+		{
 			name:    "wrong type",
 			raw:     doc(bson.D{{Key: "home_verse", Value: "Rock Verse"}}),
 			wantErr: "want document",
@@ -703,6 +752,27 @@ func TestConvertRepeated(t *testing.T) {
 				{Name: "Rock Verse", JumpCount: 3},
 				{},
 			}},
+		},
+		{
+			name: "large messages",
+			raw: doc(bson.D{
+				{Key: "alter_ego", Value: "Evelyn"},
+				{Key: "multiverse", Value: bson.A{
+					bson.D{{Key: "name", Value: strings.Repeat("a", 200)}},
+					bson.D{{Key: "name", Value: "small"}},
+					bson.D{{Key: "name", Value: strings.Repeat("c", 300)}},
+				}},
+				{Key: "be_kind", Value: true},
+			}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				AlterEgo: "Evelyn",
+				Multiverse: []*testpb.Verse{
+					{Name: strings.Repeat("a", 200)},
+					{Name: "small"},
+					{Name: strings.Repeat("c", 300)},
+				},
+				BeKind: true,
+			},
 		},
 		{
 			name: "all three together",
