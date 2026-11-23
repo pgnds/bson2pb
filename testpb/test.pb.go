@@ -95,6 +95,8 @@ type EverythingEverywhereAllAtOnce struct {
 	FannyPackHits     []int32                `protobuf:"varint,18,rep,packed,name=fanny_pack_hits,json=fannyPackHits,proto3" json:"fanny_pack_hits,omitempty"`
 	OtherLives        []string               `protobuf:"bytes,19,rep,name=other_lives,json=otherLives,proto3" json:"other_lives,omitempty"`
 	Multiverse        []*Verse               `protobuf:"bytes,20,rep,name=multiverse,proto3" json:"multiverse,omitempty"`
+	DeirdreTrophies   map[string]int32       `protobuf:"bytes,21,rep,name=deirdre_trophies,json=deirdreTrophies,proto3" json:"deirdre_trophies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	VerseIndex        map[int32]string       `protobuf:"bytes,22,rep,name=verse_index,json=verseIndex,proto3" json:"verse_index,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -269,6 +271,20 @@ func (x *EverythingEverywhereAllAtOnce) GetMultiverse() []*Verse {
 	return nil
 }
 
+func (x *EverythingEverywhereAllAtOnce) GetDeirdreTrophies() map[string]int32 {
+	if x != nil {
+		return x.DeirdreTrophies
+	}
+	return nil
+}
+
+func (x *EverythingEverywhereAllAtOnce) GetVerseIndex() map[int32]string {
+	if x != nil {
+		return x.VerseIndex
+	}
+	return nil
+}
+
 type Verse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -333,7 +349,7 @@ var File_testpb_test_proto protoreflect.FileDescriptor
 
 const file_testpb_test_proto_rawDesc = "" +
 	"\n" +
-	"\x11testpb/test.proto\x12\x06testpb\"\x82\x06\n" +
+	"\x11testpb/test.proto\x12\x06testpb\"\xc4\b\n" +
 	"\x1dEverythingEverywhereAllAtOnce\x12\x1b\n" +
 	"\talter_ego\x18\x01 \x01(\tR\balterEgo\x12\x17\n" +
 	"\abe_kind\x18\x02 \x01(\bR\x06beKind\x12&\n" +
@@ -362,7 +378,16 @@ const file_testpb_test_proto_rawDesc = "" +
 	"otherLives\x12-\n" +
 	"\n" +
 	"multiverse\x18\x14 \x03(\v2\r.testpb.VerseR\n" +
-	"multiverse\"h\n" +
+	"multiverse\x12e\n" +
+	"\x10deirdre_trophies\x18\x15 \x03(\v2:.testpb.EverythingEverywhereAllAtOnce.DeirdreTrophiesEntryR\x0fdeirdreTrophies\x12V\n" +
+	"\vverse_index\x18\x16 \x03(\v25.testpb.EverythingEverywhereAllAtOnce.VerseIndexEntryR\n" +
+	"verseIndex\x1aB\n" +
+	"\x14DeirdreTrophiesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\x1a=\n" +
+	"\x0fVerseIndexEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"h\n" +
 	"\x05Verse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
@@ -389,22 +414,26 @@ func file_testpb_test_proto_rawDescGZIP() []byte {
 }
 
 var file_testpb_test_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_testpb_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_testpb_test_proto_goTypes = []any{
 	(Mood)(0),                             // 0: testpb.Mood
 	(*EverythingEverywhereAllAtOnce)(nil), // 1: testpb.EverythingEverywhereAllAtOnce
 	(*Verse)(nil),                         // 2: testpb.Verse
+	nil,                                   // 3: testpb.EverythingEverywhereAllAtOnce.DeirdreTrophiesEntry
+	nil,                                   // 4: testpb.EverythingEverywhereAllAtOnce.VerseIndexEntry
 }
 var file_testpb_test_proto_depIdxs = []int32{
 	2, // 0: testpb.EverythingEverywhereAllAtOnce.home_verse:type_name -> testpb.Verse
 	0, // 1: testpb.EverythingEverywhereAllAtOnce.mood:type_name -> testpb.Mood
 	2, // 2: testpb.EverythingEverywhereAllAtOnce.multiverse:type_name -> testpb.Verse
-	2, // 3: testpb.Verse.next_verse:type_name -> testpb.Verse
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 3: testpb.EverythingEverywhereAllAtOnce.deirdre_trophies:type_name -> testpb.EverythingEverywhereAllAtOnce.DeirdreTrophiesEntry
+	4, // 4: testpb.EverythingEverywhereAllAtOnce.verse_index:type_name -> testpb.EverythingEverywhereAllAtOnce.VerseIndexEntry
+	2, // 5: testpb.Verse.next_verse:type_name -> testpb.Verse
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_testpb_test_proto_init() }
@@ -418,7 +447,7 @@ func file_testpb_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_testpb_test_proto_rawDesc), len(file_testpb_test_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

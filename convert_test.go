@@ -828,3 +828,101 @@ func TestConvertRepeated(t *testing.T) {
 
 	runConvertCases(t, cases)
 }
+
+func TestConvertMap(t *testing.T) {
+	cases := []convertCase{
+		{
+			name: "simple",
+			raw: doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{
+				{Key: "auditor of the year", Value: 2},
+				{Key: "bowling", Value: 1},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				DeirdreTrophies: map[string]int32{"auditor of the year": 2, "bowling": 1},
+			},
+		},
+		{
+			name: "zero value kept",
+			raw:  doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{{Key: "bowling", Value: 0}}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				DeirdreTrophies: map[string]int32{"bowling": 0},
+			},
+		},
+		{
+			name: "empty map",
+			raw:  doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{},
+		},
+		{
+			name: "empty key",
+			raw:  doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{{Key: "", Value: 3}}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				DeirdreTrophies: map[string]int32{"": 3},
+			},
+		},
+		{
+			name: "negative values",
+			raw: doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{
+				{Key: "rock", Value: -1},
+				{Key: "pinky", Value: math.MinInt32},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				DeirdreTrophies: map[string]int32{"rock": -1, "pinky": math.MinInt32},
+			},
+		},
+		{
+			name: "duplicate keys last wins",
+			raw: doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{
+				{Key: "bowling", Value: 1},
+				{Key: "bowling", Value: 5},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				DeirdreTrophies: map[string]int32{"bowling": 5},
+			},
+		},
+		{
+			name: "with other fields",
+			raw: doc(bson.D{
+				{Key: "alter_ego", Value: "Deirdre"},
+				{Key: "deirdre_trophies", Value: bson.D{{Key: "bowling", Value: 1}}},
+				{Key: "be_kind", Value: true},
+			}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				AlterEgo:        "Deirdre",
+				DeirdreTrophies: map[string]int32{"bowling": 1},
+				BeKind:          true,
+			},
+		},
+		{
+			name: "int32 key",
+			raw: doc(bson.D{{Key: "verse_index", Value: bson.D{
+				{Key: "7", Value: "Rock Verse"},
+			}}}),
+			want: &testpb.EverythingEverywhereAllAtOnce{
+				VerseIndex: map[int32]string{7: "Rock Verse"},
+			},
+		},
+		{
+			name:    "not a document",
+			raw:     doc(bson.D{{Key: "deirdre_trophies", Value: 1}}),
+			wantErr: "want map",
+		},
+		{
+			name:    "array instead of document",
+			raw:     doc(bson.D{{Key: "deirdre_trophies", Value: bson.A{1, 2}}}),
+			wantErr: "want map",
+		},
+		{
+			name:    "wrong value type",
+			raw:     doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{{Key: "bowling", Value: "one"}}}}),
+			wantErr: "want int32",
+		},
+		{
+			name:    "int64 value",
+			raw:     doc(bson.D{{Key: "deirdre_trophies", Value: bson.D{{Key: "bowling", Value: int64(1)}}}}),
+			wantErr: "want int32",
+		},
+	}
+
+	runConvertCases(t, cases)
+}

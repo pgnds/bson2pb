@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 	"unicode/utf8"
 
@@ -107,12 +108,10 @@ func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byt
 			continue
 		}
 
-		if fd.IsMap() {
-			return buffer, fmt.Errorf("field %q: map fields not supported yet", key)
-		}
-
 		if fd.IsList() {
 			buffer, err = appendList(buffer, fd, typ, val)
+		} else if fd.IsMap() {
+			buffer, err = appendMap(buffer, fd, typ, val)
 		} else if fd.Kind() == protoreflect.MessageKind {
 			buffer, err = appendMessage(buffer, fd, typ, val)
 		} else {
@@ -191,6 +190,98 @@ func appendList(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []
 	}
 }
 
+func appendMap(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
+	var elemTyp byte
+	var err error
+	var key, elemVal []byte
+
+	if typ != 0x03 {
+		return buffer, fmt.Errorf("malformed value: want map, got BSON type 0x%02x", typ)
+	}
+	rest := val[4:]
+
+	for {
+		if len(rest) == 0 {
+			return buffer, fmt.Errorf("malformed map: %w", errTruncated)
+		}
+		if rest[0] == 0x00 {
+			if len(rest) != 1 {
+				return buffer, fmt.Errorf("malformed map: %w", errInvalidLength)
+			}
+
+			return buffer, nil
+		}
+
+		elemTyp, key, rest, err = readHeader(rest)
+		if err != nil {
+			return buffer, fmt.Errorf("malformed element: %w", err)
+		}
+
+		elemVal, rest, err = readValue(elemTyp, rest)
+		if err != nil {
+			return buffer, fmt.Errorf("element %q: malformed value: %w", key, err)
+		}
+
+		buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
+		entryStart := len(buffer)
+		buffer, err = appendMapKey(buffer, fd.MapKey(), key)
+		if err != nil {
+			return buffer, fmt.Errorf("element %q: %w", key, err)
+		}
+
+		buffer, err = appendValue(buffer, fd.MapValue(), elemTyp, elemVal)
+		if err != nil {
+			return buffer, fmt.Errorf("element %q: %w", key, err)
+		}
+
+		buffer = insertLength(buffer, entryStart)
+	}
+}
+
+func appendMapKey(buffer []byte, kd protoreflect.FieldDescriptor, key []byte) ([]byte, error) {
+	buffer = protowire.AppendTag(buffer, kd.Number(), wireType(kd.Kind()))
+
+	switch kd.Kind() {
+	case protoreflect.StringKind:
+		return protowire.AppendBytes(buffer, key), nil
+	case protoreflect.BoolKind:
+		switch string(key) {
+		case "true":
+			return protowire.AppendVarint(buffer, 1), nil
+		case "false":
+			return protowire.AppendVarint(buffer, 0), nil
+		default:
+			return buffer, fmt.Errorf("invalid bool key %q", key)
+		}
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		i, err := strconv.ParseInt(string(key), 10, 32)
+		if err != nil {
+			return buffer, fmt.Errorf("invalid %s key: %w", kd.Kind(), err)
+		}
+		return appendInt(buffer, kd.Kind(), i), nil
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		i, err := strconv.ParseInt(string(key), 10, 64)
+		if err != nil {
+			return buffer, fmt.Errorf("invalid %s key: %w", kd.Kind(), err)
+		}
+		return appendInt(buffer, kd.Kind(), i), nil
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		u, err := strconv.ParseUint(string(key), 10, 32)
+		if err != nil {
+			return buffer, fmt.Errorf("invalid %s key: %w", kd.Kind(), err)
+		}
+		return appendInt(buffer, kd.Kind(), int64(u)), nil
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		u, err := strconv.ParseUint(string(key), 10, 64)
+		if err != nil {
+			return buffer, fmt.Errorf("invalid %s key: %w", kd.Kind(), err)
+		}
+		return appendInt(buffer, kd.Kind(), int64(u)), nil
+	default:
+		return buffer, fmt.Errorf("map key kind %s not supported", kd.Kind())
+	}
+}
+
 // appendValue encodes the BSON value val (of BSON type typ) as protobuf wire
 // bytes for field fd and appends them to the buffer. Zero values of fields without
 // presence are skipped. It returns the extended buffer.
@@ -252,15 +343,7 @@ func encodeValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			return buffer, errNegativeUnsigned
 		}
 
-		switch fd.Kind() {
-		case protoreflect.Int32Kind, protoreflect.Uint32Kind:
-			buffer = protowire.AppendVarint(buffer, uint64(int64(i)))
-		case protoreflect.Sint32Kind:
-			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(int64(i)))
-		default:
-			buffer = protowire.AppendFixed32(buffer, uint32(i))
-		}
-		return buffer, nil
+		return appendInt(buffer, fd.Kind(), int64(i)), nil
 	case protoreflect.Int64Kind,
 		protoreflect.Sint64Kind,
 		protoreflect.Sfixed64Kind,
@@ -277,15 +360,7 @@ func encodeValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 			return buffer, errNegativeUnsigned
 		}
 
-		switch fd.Kind() {
-		case protoreflect.Int64Kind, protoreflect.Uint64Kind:
-			buffer = protowire.AppendVarint(buffer, uint64(i64))
-		case protoreflect.Sint64Kind:
-			buffer = protowire.AppendVarint(buffer, protowire.EncodeZigZag(i64))
-		default:
-			buffer = protowire.AppendFixed64(buffer, uint64(i64))
-		}
-		return buffer, nil
+		return appendInt(buffer, fd.Kind(), i64), nil
 	case protoreflect.DoubleKind, protoreflect.FloatKind:
 		if typ != 0x01 {
 			return buffer, fmt.Errorf("malformed value: want double, got BSON type 0x%02x", typ)
@@ -418,4 +493,17 @@ func insertLength(buffer []byte, pos int) []byte {
 	copy(buffer[pos:], protowire.AppendVarint(length[:0], uint64(n)))
 
 	return buffer
+}
+
+func appendInt(buffer []byte, kind protoreflect.Kind, v int64) []byte {
+	switch kind {
+	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+		return protowire.AppendVarint(buffer, protowire.EncodeZigZag(v))
+	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
+		return protowire.AppendFixed32(buffer, uint32(v))
+	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		return protowire.AppendFixed64(buffer, uint64(v))
+	default: // Int32Kind, Int64Kind, Uint32Kind, Uint64Kind
+		return protowire.AppendVarint(buffer, uint64(v))
+	}
 }
