@@ -19,9 +19,18 @@ import (
 var errFloatOverflow = errors.New("float overflow")
 var errNegativeUnsigned = errors.New("negative unsigned")
 
-var fieldMaps sync.Map
+var plans sync.Map
 var bufPool = sync.Pool{
 	New: func() any { b := make([]byte, 0, 512); return &b },
+}
+
+type msgPlan struct {
+	byName map[string]*fieldPlan
+}
+
+type fieldPlan struct {
+	fd  protoreflect.FieldDescriptor
+	msg *msgPlan
 }
 
 // Convert decodes raw into a new M and returns it.
@@ -51,7 +60,7 @@ func Convert[M any, PM interface {
 		}
 	}()
 
-	buf, err = appendDocument(buf, m.Descriptor(), rest)
+	buf, err = appendDocument(buf, planFor(m.Descriptor()), rest)
 	if err != nil {
 		return nil, fmt.Errorf("bson2pb: %w", err)
 	}
@@ -72,14 +81,12 @@ func Convert[M any, PM interface {
 
 // appendDocument encodes the BSON document body rest (the elements after the
 // length prefix, up to and including the 0x00 terminator) as protobuf wire
-// bytes for message md and appends them to the buffer. Keys that don't match a
-// field of md are skipped. It returns the extended buffer.
-func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byte) ([]byte, error) {
+// bytes for message described by the plan mp and appends them to the buffer.
+// Keys that don't match a field of md are skipped. It returns the extended buffer.
+func appendDocument(buffer []byte, mp *msgPlan, rest []byte) ([]byte, error) {
 	var typ byte
 	var err error
 	var key, val []byte
-
-	fm := fillMessageFields(md)
 
 	for {
 		if len(rest) == 0 {
@@ -103,17 +110,18 @@ func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byt
 			return buffer, fmt.Errorf("field %q: malformed value: %w", key, err)
 		}
 
-		fd, ok := fm[string(key)]
+		fp, ok := mp.byName[string(key)]
 		if !ok {
 			continue
 		}
 
+		fd := fp.fd
 		if fd.IsList() {
-			buffer, err = appendList(buffer, fd, typ, val)
+			buffer, err = appendList(buffer, fp, typ, val)
 		} else if fd.IsMap() {
 			buffer, err = appendMap(buffer, fd, typ, val)
 		} else if fd.Kind() == protoreflect.MessageKind {
-			buffer, err = appendMessage(buffer, fd, typ, val)
+			buffer, err = appendMessage(buffer, fp, typ, val)
 		} else {
 			buffer, err = appendValue(buffer, fd, typ, val)
 		}
@@ -129,14 +137,16 @@ func appendDocument(buffer []byte, md protoreflect.MessageDescriptor, rest []byt
 // child buffer is allocated. Unlike scalar zero values, an empty sub-document is
 // still written, since message fields always have presence. It returns the extended
 // buffer.
-func appendMessage(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
+func appendMessage(buffer []byte, fp *fieldPlan, typ byte, val []byte) ([]byte, error) {
 	if typ != 0x03 {
 		return buffer, fmt.Errorf("malformed value: want document, got BSON type 0x%02x", typ)
 	}
+
+	fd := fp.fd
 	buffer = protowire.AppendTag(buffer, fd.Number(), protowire.BytesType)
 	valStart := len(buffer)
 
-	buffer, err := appendDocument(buffer, fd.Message(), val[4:])
+	buffer, err := appendDocument(buffer, fp.msg, val[4:])
 	if err != nil {
 		return buffer, err
 	}
@@ -145,7 +155,7 @@ func appendMessage(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val
 }
 
 // appendList encodes the BSON array val as a repeated field fd, one tag per element.
-func appendList(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []byte) ([]byte, error) {
+func appendList(buffer []byte, fp *fieldPlan, typ byte, val []byte) ([]byte, error) {
 	var elemTyp byte
 	var err error
 	var key, elemVal []byte
@@ -154,6 +164,7 @@ func appendList(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []
 		return buffer, fmt.Errorf("malformed value: want array, got BSON type 0x%02x", typ)
 	}
 	rest := val[4:]
+	fd := fp.fd
 
 	for {
 		if len(rest) == 0 {
@@ -178,7 +189,7 @@ func appendList(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val []
 		}
 
 		if fd.Kind() == protoreflect.MessageKind {
-			buffer, err = appendMessage(buffer, fd, elemTyp, elemVal)
+			buffer, err = appendMessage(buffer, fp, elemTyp, elemVal)
 		} else {
 			buffer = protowire.AppendTag(buffer, fd.Number(), wireType(fd.Kind()))
 			buffer, err = encodeValue(buffer, fd, elemTyp, elemVal)
@@ -424,22 +435,41 @@ func encodeValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 	}
 }
 
-func fillMessageFields(md protoreflect.MessageDescriptor) map[string]protoreflect.FieldDescriptor {
-	v, ok := fieldMaps.Load(md)
+func planFor(md protoreflect.MessageDescriptor) *msgPlan {
+	v, ok := plans.Load(md)
 	if ok {
-		return v.(map[string]protoreflect.FieldDescriptor)
+		return v.(*msgPlan)
 	}
 
-	fields := md.Fields()
-	fm := make(map[string]protoreflect.FieldDescriptor, fields.Len())
+	seen := make(map[protoreflect.MessageDescriptor]*msgPlan)
+	p := buildPlan(md, seen)
+	actual, _ := plans.LoadOrStore(md, p)
+	return actual.(*msgPlan)
+}
 
+func buildPlan(
+	md protoreflect.MessageDescriptor,
+	seen map[protoreflect.MessageDescriptor]*msgPlan) *msgPlan {
+	p, ok := seen[md]
+	if ok {
+		return p
+	}
+
+	p = &msgPlan{byName: make(map[string]*fieldPlan)}
+	seen[md] = p
+	fields := md.Fields()
 	for i := 0; i < fields.Len(); i++ {
 		fd := fields.Get(i)
-		fm[string(fd.Name())] = fd
+		fp := &fieldPlan{fd: fd}
+
+		if fd.Kind() == protoreflect.MessageKind && !fd.IsMap() {
+			fp.msg = buildPlan(fd.Message(), seen)
+		}
+
+		p.byName[string(fd.Name())] = fp
 	}
 
-	actual, _ := fieldMaps.LoadOrStore(md, fm)
-	return actual.(map[string]protoreflect.FieldDescriptor)
+	return p
 }
 
 func wireType(kind protoreflect.Kind) protowire.Type {
