@@ -16,6 +16,15 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+type shape uint8
+
+const (
+	shapeScalar shape = iota
+	shapeMessage
+	shapeList
+	shapeMap
+)
+
 var errFloatOverflow = errors.New("float overflow")
 var errNegativeUnsigned = errors.New("negative unsigned")
 
@@ -29,8 +38,9 @@ type msgPlan struct {
 }
 
 type fieldPlan struct {
-	fd  protoreflect.FieldDescriptor
-	msg *msgPlan
+	fd    protoreflect.FieldDescriptor
+	msg   *msgPlan
+	shape shape
 }
 
 // Convert decodes raw into a new M and returns it.
@@ -116,15 +126,17 @@ func appendDocument(buffer []byte, mp *msgPlan, rest []byte) ([]byte, error) {
 		}
 
 		fd := fp.fd
-		if fd.IsList() {
+		switch fp.shape {
+		case shapeList:
 			buffer, err = appendList(buffer, fp, typ, val)
-		} else if fd.IsMap() {
+		case shapeMap:
 			buffer, err = appendMap(buffer, fd, typ, val)
-		} else if fd.Kind() == protoreflect.MessageKind {
+		case shapeMessage:
 			buffer, err = appendMessage(buffer, fp, typ, val)
-		} else {
+		default:
 			buffer, err = appendValue(buffer, fd, typ, val)
 		}
+
 		if err != nil {
 			return buffer, fmt.Errorf("field %q: %w", key, err)
 		}
@@ -464,6 +476,16 @@ func buildPlan(
 
 		if fd.Kind() == protoreflect.MessageKind && !fd.IsMap() {
 			fp.msg = buildPlan(fd.Message(), seen)
+		}
+
+		if fd.IsList() {
+			fp.shape = shapeList
+		} else if fd.IsMap() {
+			fp.shape = shapeMap
+		} else if fd.Kind() == protoreflect.MessageKind {
+			fp.shape = shapeMessage
+		} else {
+			fp.shape = shapeScalar
 		}
 
 		p.byName[string(fd.Name())] = fp
