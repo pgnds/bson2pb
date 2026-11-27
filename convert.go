@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"unicode/utf8"
+	"unsafe"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -35,12 +38,14 @@ var bufPool = sync.Pool{
 
 type msgPlan struct {
 	byName map[string]*fieldPlan
+	typ    reflect.Type
 }
 
 type fieldPlan struct {
-	fd    protoreflect.FieldDescriptor
-	msg   *msgPlan
-	shape shape
+	fd     protoreflect.FieldDescriptor
+	msg    *msgPlan
+	shape  shape
+	offset uintptr
 }
 
 // Convert decodes raw into a new M and returns it.
@@ -70,7 +75,7 @@ func Convert[M any, PM interface {
 		}
 	}()
 
-	buf, err = appendDocument(buf, planFor(m.Descriptor()), rest)
+	buf, err = appendDocument(buf, planFor(m.Descriptor(), reflect.TypeFor[M]()), rest)
 	if err != nil {
 		return nil, fmt.Errorf("bson2pb: %w", err)
 	}
@@ -447,21 +452,22 @@ func encodeValue(buffer []byte, fd protoreflect.FieldDescriptor, typ byte, val [
 	}
 }
 
-func planFor(md protoreflect.MessageDescriptor) *msgPlan {
+func planFor(md protoreflect.MessageDescriptor, rt reflect.Type) *msgPlan {
 	v, ok := plans.Load(md)
 	if ok {
 		return v.(*msgPlan)
 	}
 
 	seen := make(map[protoreflect.MessageDescriptor]*msgPlan)
-	p := buildPlan(md, seen)
+	p := buildPlan(md, seen, rt)
 	actual, _ := plans.LoadOrStore(md, p)
 	return actual.(*msgPlan)
 }
 
 func buildPlan(
 	md protoreflect.MessageDescriptor,
-	seen map[protoreflect.MessageDescriptor]*msgPlan) *msgPlan {
+	seen map[protoreflect.MessageDescriptor]*msgPlan,
+	rt reflect.Type) *msgPlan {
 	p, ok := seen[md]
 	if ok {
 		return p
@@ -470,12 +476,39 @@ func buildPlan(
 	p = &msgPlan{byName: make(map[string]*fieldPlan)}
 	seen[md] = p
 	fields := md.Fields()
+
+	msf := map[protoreflect.FieldNumber]reflect.StructField{}
+	for i := 0; rt != nil && i < rt.NumField(); i++ {
+		sf := rt.Field(i)
+		parts := strings.Split(sf.Tag.Get("protobuf"), ",")
+		if len(parts) < 2 {
+			continue
+		}
+		key, err := strconv.Atoi(parts[1])
+		if err != nil {
+			continue
+		}
+		msf[protoreflect.FieldNumber(key)] = sf
+	}
+
 	for i := 0; i < fields.Len(); i++ {
 		fd := fields.Get(i)
 		fp := &fieldPlan{fd: fd}
 
+		sf, ok := msf[fd.Number()]
+		if ok {
+			fp.offset = sf.Offset
+		}
+
 		if fd.Kind() == protoreflect.MessageKind && !fd.IsMap() {
-			fp.msg = buildPlan(fd.Message(), seen)
+			var childType reflect.Type
+			if ok {
+				childType = sf.Type.Elem()
+				if fd.IsList() {
+					childType = childType.Elem()
+				}
+			}
+			fp.msg = buildPlan(fd.Message(), seen, childType)
 		}
 
 		if fd.IsList() {
@@ -558,4 +591,177 @@ func appendInt(buffer []byte, kind protoreflect.Kind, v int64) []byte {
 	default: // Int32Kind, Int64Kind, Uint32Kind, Uint64Kind
 		return protowire.AppendVarint(buffer, uint64(v))
 	}
+}
+
+func decodeDocument(base unsafe.Pointer, mp *msgPlan, rest []byte) error {
+	var typ byte
+	var err error
+	var key, val []byte
+
+	for {
+		if len(rest) == 0 {
+			return fmt.Errorf("malformed document: %w", errTruncated)
+		}
+		if rest[0] == 0x00 {
+			if len(rest) != 1 {
+				return fmt.Errorf("malformed document: %w", errInvalidLength)
+			}
+
+			return nil
+		}
+
+		typ, key, rest, err = readHeader(rest)
+		if err != nil {
+			return fmt.Errorf("malformed element: %w", err)
+		}
+
+		val, rest, err = readValue(typ, rest)
+		if err != nil {
+			return fmt.Errorf("field %q: malformed value: %w", key, err)
+		}
+
+		fp, ok := mp.byName[string(key)]
+		if !ok {
+			continue
+		}
+
+		ptr := unsafe.Add(base, fp.offset)
+
+		switch fp.shape {
+		case shapeScalar:
+			err = decodeScalar(ptr, fp.fd, typ, val)
+		default:
+			return fmt.Errorf("direct: not supported yet")
+		}
+
+		if err != nil {
+			return fmt.Errorf("field %q: %w", key, err)
+		}
+	}
+}
+
+func decodeScalar(ptr unsafe.Pointer, fd protoreflect.FieldDescriptor, typ byte, val []byte) error {
+	switch fd.Kind() {
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		if typ != 0x10 {
+			return fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
+		}
+		v, err := readInt32(val)
+		if err != nil {
+			return err
+		}
+		*(*int32)(ptr) = v
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		if typ != 0x12 {
+			return fmt.Errorf("malformed value: want int64, got BSON type 0x%02x", typ)
+		}
+		v, err := readInt64(val)
+		if err != nil {
+			return err
+		}
+		*(*int64)(ptr) = v
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		if typ != 0x10 {
+			return fmt.Errorf("malformed value: want int32, got BSON type 0x%02x", typ)
+		}
+		v, err := readInt32(val)
+		if err != nil {
+			return err
+		}
+		if (fd.Kind() == protoreflect.Uint32Kind || fd.Kind() == protoreflect.Fixed32Kind) && v < 0 {
+			return errNegativeUnsigned
+		}
+
+		*(*uint32)(ptr) = uint32(v)
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		if typ != 0x12 {
+			return fmt.Errorf("malformed value: want int64, got BSON type 0x%02x", typ)
+		}
+		v, err := readInt64(val)
+		if err != nil {
+			return err
+		}
+		if (fd.Kind() == protoreflect.Uint64Kind || fd.Kind() == protoreflect.Fixed64Kind) && v < 0 {
+			return errNegativeUnsigned
+		}
+
+		*(*uint64)(ptr) = uint64(v)
+	case protoreflect.BoolKind:
+		if typ != 0x08 {
+			return fmt.Errorf("malformed value: want bool, got BSON type 0x%02x", typ)
+		}
+		v, err := readBool(val)
+		if err != nil {
+			return err
+		}
+		*(*bool)(ptr) = v
+	case protoreflect.DoubleKind, protoreflect.FloatKind:
+		if typ != 0x01 {
+			return fmt.Errorf("malformed value: want double, got BSON type 0x%02x", typ)
+		}
+		v, err := readDouble(val)
+		if err != nil {
+			return err
+		}
+
+		switch fd.Kind() {
+		case protoreflect.DoubleKind:
+			*(*float64)(ptr) = v
+		default:
+			f32 := float32(v)
+			if math.IsInf(float64(f32), 0) && !math.IsInf(v, 0) {
+				return errFloatOverflow
+			}
+			*(*float32)(ptr) = f32
+		}
+	case protoreflect.StringKind:
+		if typ != 0x02 {
+			return fmt.Errorf("malformed value: want string, got BSON type 0x%02x", typ)
+		}
+		v, err := readStringBytes(val)
+		if err != nil {
+			return err
+		}
+		if !utf8.Valid(v) {
+			return errInvalidUTF8
+		}
+
+		*(*string)(ptr) = string(v)
+	case protoreflect.BytesKind:
+		if typ != 0x05 {
+			return fmt.Errorf("malformed value: want binary, got BSON type 0x%02x", typ)
+		}
+		v, err := readBinary(val)
+		if err != nil {
+			return err
+		}
+		// TODO: one shared buffer per document for all strings and bytes.
+		*(*[]byte)(ptr) = append([]byte(nil), v...)
+	case protoreflect.EnumKind:
+		var v int32
+		switch typ {
+		case 0x10:
+			var err error
+			v, err = readInt32(val)
+			if err != nil {
+				return err
+			}
+		case 0x02:
+			s, err := readStringBytes(val)
+			if err != nil {
+				return err
+			}
+			e := fd.Enum().Values().ByName(protoreflect.Name(s))
+			if e == nil {
+				return fmt.Errorf("unknown enum name: %q", s)
+			}
+			v = int32(e.Number())
+		default:
+			return fmt.Errorf("malformed value: want int32 or string, got BSON type 0x%02x", typ)
+		}
+		*(*int32)(ptr) = v
+	default:
+		return fmt.Errorf("decode scalar: not support yet")
+	}
+	return nil
 }
